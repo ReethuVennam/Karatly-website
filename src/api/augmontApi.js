@@ -8,6 +8,99 @@ const LIVE_GOLD_RATE_HISTORY_KEY = "liveGoldRateHistory";
 const LIVE_GOLD_RATE_HISTORY_LIMIT = 12;
 const AUGMONT_USER_KEY = "augmontUser";
 const AUGMONT_ORDER_REFERENCES_KEY = "augmontOrderReferences";
+const RATE_CACHE_TTL_MS = 30 * 1000;
+const RATE_CACHE_PREFIX = "augmontRateCache:";
+
+const rateCacheMemory = new Map();
+const rateRequestsInFlight = new Map();
+
+const getRateCacheKey = (name, params = {}) =>
+  `${RATE_CACHE_PREFIX}${name}:${JSON.stringify(params)}`;
+
+const readRateCache = (name, params = {}) => {
+  const key = getRateCacheKey(name, params);
+  const memoryEntry = rateCacheMemory.get(key);
+  if (memoryEntry) return memoryEntry;
+
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const entry = JSON.parse(raw);
+    rateCacheMemory.set(key, entry);
+    return entry;
+  } catch {
+    return null;
+  }
+};
+
+const writeRateCache = (name, params, value) => {
+  const key = getRateCacheKey(name, params);
+  const entry = {
+    storedAt: Date.now(),
+    value
+  };
+  rateCacheMemory.set(key, entry);
+  try {
+    localStorage.setItem(key, JSON.stringify(entry));
+  } catch {
+    // localStorage can fail in private mode; memory cache still works.
+  }
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(
+      new CustomEvent("augmontRatesUpdated", {
+        detail: { name, params, storedAt: entry.storedAt }
+      })
+    );
+  }
+  return value;
+};
+
+const getValidCachedRate = (name, params = {}) => {
+  const entry = readRateCache(name, params);
+  if (!entry) return null;
+  return Date.now() - Number(entry.storedAt || 0) < RATE_CACHE_TTL_MS
+    ? entry.value
+    : null;
+};
+
+const getAnyCachedRate = (name, params = {}) =>
+  readRateCache(name, params)?.value || null;
+
+const withRateCache = async (
+  name,
+  params,
+  loader,
+  { force = false, allowNetwork = true } = {}
+) => {
+  if (!force) {
+    const cached = getValidCachedRate(name, params);
+    if (cached) return { ...cached, fromCache: true };
+  }
+
+  const key = getRateCacheKey(name, params);
+  if (!force && rateRequestsInFlight.has(key)) {
+    const response = await rateRequestsInFlight.get(key);
+    return { ...response, fromCache: true };
+  }
+
+  if (!allowNetwork) {
+    const cached = getAnyCachedRate(name, params);
+    return cached
+      ? { ...cached, fromCache: true, stale: !getValidCachedRate(name, params) }
+      : {
+          ok: false,
+          fromCache: true,
+          message: "Cached rate data is unavailable"
+        };
+  }
+
+  const request = loader()
+    .then((response) => writeRateCache(name, params, response))
+    .finally(() => rateRequestsInFlight.delete(key));
+
+  rateRequestsInFlight.set(key, request);
+  return request;
+};
 
 const getJson = async (res) => {
   const text = await res.text();
@@ -1068,8 +1161,9 @@ export const getGoldRates = async (merchantId = DEFAULT_MERCHANT_ID) => {
   }
 };
 
-export const fetchLiveGoldRateSnapshot = async () => {
-  try {
+export const fetchLiveGoldRateSnapshot = async (options = {}) =>
+  withRateCache("live", { merchantId: DEFAULT_MERCHANT_ID }, async () => {
+    try {
     const data = await getGoldRates();
     const snapshot = normalizeGoldRatePayload(data);
 
@@ -1101,15 +1195,21 @@ export const fetchLiveGoldRateSnapshot = async () => {
       history: readGoldRateHistory()
     };
   }
-};
+  }, options);
 
 export const fetchAugmontRateHistory = async ({
   merchantId = DEFAULT_MERCHANT_ID,
   fromDate,
   toDate,
-  metalType = "gold"
-} = {}) => {
-  try {
+  metalType = "gold",
+  force = false,
+  allowNetwork = true
+} = {}) =>
+  withRateCache(
+    "history",
+    { merchantId, fromDate, toDate, metalType },
+    async () => {
+      try {
     const res = await fetch(`${BASE_URL}/api/v1/rates/history`, {
       method: "POST",
       headers: {
@@ -1151,10 +1251,16 @@ export const fetchAugmontRateHistory = async ({
       message: "Failed to fetch historical Augmont rates"
     };
   }
-};
+    },
+    { force, allowNetwork }
+  );
 
-export const fetchAugmontSipRates = async (merchantId = DEFAULT_MERCHANT_ID) => {
-  try {
+export const fetchAugmontSipRates = async (
+  merchantId = DEFAULT_MERCHANT_ID,
+  options = {}
+) =>
+  withRateCache("sip", { merchantId }, async () => {
+    try {
     const res = await fetch(`${BASE_URL}/api/v1/rates/sip`, {
       method: "POST",
       headers: {
@@ -1196,7 +1302,7 @@ export const fetchAugmontSipRates = async (merchantId = DEFAULT_MERCHANT_ID) => 
       message: "Failed to fetch SIP rates"
     };
   }
-};
+  }, options);
 
 /* ---------------- AUGMONT ORDERS ---------------- */
 

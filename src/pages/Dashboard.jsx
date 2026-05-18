@@ -59,7 +59,7 @@ export default function Dashboard() {
       setGold(stored);
 
       try {
-        const rates = await fetchLiveGoldRateSnapshot();
+        const rates = await fetchLiveGoldRateSnapshot({ allowNetwork: false });
         const price = Number(rates?.snapshot?.buyPrice || 0);
 
         if (price > 0) {

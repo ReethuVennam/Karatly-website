@@ -20,7 +20,6 @@ const currencyFormatter = new Intl.NumberFormat("en-IN", {
 });
 
 const formatGrams = (value) => `${Number(value || 0).toFixed(4)} g`;
-const RATE_REFRESH_MS = 300_000;
 const MAX_SELL_AMOUNT = 1000000;
 const SELL_COOLDOWN_HOURS = 48;
 
@@ -67,7 +66,7 @@ export default function SellGold() {
 
   const loadRate = useCallback(async ({ silent = false } = {}) => {
     if (!silent) setIsRateLoading(true);
-    const result = await fetchLiveGoldRateSnapshot();
+    const result = await fetchLiveGoldRateSnapshot({ allowNetwork: false });
     if (!result?.ok) {
       setRateError(result?.message || "Unable to fetch live sell price");
       setIsRateLoading(false);
@@ -92,8 +91,13 @@ export default function SellGold() {
 
   useEffect(() => {
     loadRate();
-    const id = window.setInterval(() => loadRate({ silent: true }), RATE_REFRESH_MS);
-    return () => window.clearInterval(id);
+    const handleRatesUpdated = (event) => {
+      if (event?.detail?.name === "live") loadRate({ silent: true });
+    };
+    window.addEventListener("augmontRatesUpdated", handleRatesUpdated);
+    return () => {
+      window.removeEventListener("augmontRatesUpdated", handleRatesUpdated);
+    };
   }, [loadRate]);
 
   // Load banks from Augmont
@@ -220,7 +224,12 @@ export default function SellGold() {
       bankAccount: primaryBank.accountNumber,
     });
 
-    const updated = Math.max(0, goldOwned - parsedGrams);
+    const backendGoldBalance = Number(
+      order?.goldBalance ?? detail?.goldBalance ?? NaN
+    );
+    const updated = Number.isFinite(backendGoldBalance)
+      ? backendGoldBalance
+      : Math.max(0, goldOwned - parsedGrams);
     localStorage.setItem("goldBalance", updated.toFixed(4));
     setGoldOwned(updated);
     window.dispatchEvent(new Event("goldBalanceUpdated"));

@@ -4,7 +4,14 @@ import BuyGold from "./BuyGold";
 import SellGold from "./SellGold";
 import GoldPriceChart from "../components/GoldPriceChart";
 import TransactionHistory from "../components/TransactionHistory";
-import { fetchLiveGoldRateSnapshot, fetchAugmontPassbook, fetchAugmontBuyOrders, getAugmontUser } from "../api/augmontApi";
+import {
+  fetchAugmontBuyOrders,
+  fetchAugmontPassbook,
+  fetchAugmontRateHistory,
+  fetchAugmontSipRates,
+  fetchLiveGoldRateSnapshot,
+  getAugmontUser
+} from "../api/augmontApi";
 import { getUserProfile } from "../api/authApi";
 
 const PRODUCT_SELECTION_KEY = "selectedGoldProduct";
@@ -37,6 +44,18 @@ const toNumber = (value, fallback = 0) => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
+const toDisplayGrams = (value) => Number(toNumber(value).toFixed(4));
+
+const getDateRange = () => {
+  const toDate = new Date();
+  const fromDate = new Date();
+  fromDate.setDate(toDate.getDate() - 20);
+  return {
+    fromDate: fromDate.toISOString().slice(0, 10),
+    toDate: toDate.toISOString().slice(0, 10)
+  };
+};
+
 export default function Portfolio() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -63,14 +82,19 @@ export default function Portfolio() {
   }, []);
 
   useEffect(() => {
-    const load = async () => {
+    const load = async ({ includePassbook = true, allowNetwork = true } = {}) => {
       try {
         // ── Step 1: Get live rates ───────────────────────────────────────────
         // Fetch the live Augmont sell rate used for portfolio valuation.
         let buyRate = toNumber(localStorage.getItem("goldPrice"));
         let sellRate = toNumber(localStorage.getItem("goldSellRate"));
 
-        const rates = await fetchLiveGoldRateSnapshot();
+        const { fromDate, toDate } = getDateRange();
+        const [rates] = await Promise.all([
+          fetchLiveGoldRateSnapshot({ allowNetwork }),
+          fetchAugmontSipRates(undefined, { allowNetwork }),
+          fetchAugmontRateHistory({ fromDate, toDate, metalType: "gold", allowNetwork })
+        ]);
         buyRate = toNumber(
           rates?.snapshot?.buyPrice ??
             rates?.snapshot?.gold?.buyPrice ??
@@ -86,8 +110,15 @@ export default function Portfolio() {
           localStorage.setItem("goldSellRateTime", String(Date.now()));
         }
 
+        if (!includePassbook) {
+          const cachedGoldGrams = toDisplayGrams(localStorage.getItem("goldBalance"));
+          setGold(cachedGoldGrams);
+          setValue(sellRate > 0 ? cachedGoldGrams * sellRate : 0);
+          return;
+        }
+
         // ── Step 2: Get live gold balance from Augmont passbook (not localStorage)
-        let goldGrams = toNumber(localStorage.getItem("goldBalance"));
+        let goldGrams = toDisplayGrams(localStorage.getItem("goldBalance"));
         if (uniqueId) {
           try {
             const passbookRes = await fetchAugmontPassbook(uniqueId);
@@ -99,8 +130,8 @@ export default function Portfolio() {
                 goldGrams
               );
               if (liveBalance >= 0) {
-                goldGrams = liveBalance;
-                localStorage.setItem("goldBalance", String(liveBalance));
+                goldGrams = toDisplayGrams(liveBalance);
+                localStorage.setItem("goldBalance", goldGrams.toFixed(4));
               }
             }
           } catch (e) {
@@ -144,8 +175,18 @@ export default function Portfolio() {
     };
 
     load();
-    window.addEventListener("goldBalanceUpdated", load);
-    return () => window.removeEventListener("goldBalanceUpdated", load);
+    const handleBalanceUpdated = () => {
+      load({ allowNetwork: false });
+    };
+    window.addEventListener("goldBalanceUpdated", handleBalanceUpdated);
+    const intervalId = window.setInterval(
+      () => load({ includePassbook: false }),
+      30 * 1000
+    );
+    return () => {
+      window.removeEventListener("goldBalanceUpdated", handleBalanceUpdated);
+      window.clearInterval(intervalId);
+    };
   }, [uniqueId]);
 
   const profit = useMemo(() => value - invested, [value, invested]);

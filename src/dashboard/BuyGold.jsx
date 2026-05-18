@@ -14,7 +14,6 @@ import { prepareAugmontOrderContext } from "../utils/augmontOrderContext";
 // Constants
 // ─────────────────────────────────────────────
 const GST = 0.03;
-const RATE_REFRESH_MS = 300000;
 const MAX_BUY = 5000000;
 const NON_KYC_FY_LIMIT = 5000;
 const KYC_VERIFIED_FY_LIMIT = 500000;
@@ -50,9 +49,9 @@ export default function BuyGold() {
   // ─────────────────────────────────────────────
   // Fetch Rate
   // ─────────────────────────────────────────────
-  const loadRate = useCallback(async () => {
-    setIsRateLoading(true);
-    const res = await fetchLiveGoldRateSnapshot();
+  const loadRate = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setIsRateLoading(true);
+    const res = await fetchLiveGoldRateSnapshot({ allowNetwork: false });
     if (!res?.snapshot || res.snapshot.buyPrice <= 0) {
       setRateError("Live buy rate unavailable. Please retry.");
       setIsRateLoading(false);
@@ -66,8 +65,13 @@ export default function BuyGold() {
 
   useEffect(() => {
     loadRate();
-    const id = setInterval(loadRate, RATE_REFRESH_MS);
-    return () => clearInterval(id);
+    const handleRatesUpdated = (event) => {
+      if (event?.detail?.name === "live") loadRate({ silent: true });
+    };
+    window.addEventListener("augmontRatesUpdated", handleRatesUpdated);
+    return () => {
+      window.removeEventListener("augmontRatesUpdated", handleRatesUpdated);
+    };
   }, [loadRate]);
 
   // ─────────────────────────────────────────────

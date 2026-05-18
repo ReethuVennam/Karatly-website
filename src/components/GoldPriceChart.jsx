@@ -231,7 +231,8 @@ function GoldPriceChart() {
     const response = await fetchAugmontRateHistory({
       fromDate: appliedRange.fromDate,
       toDate: appliedRange.toDate,
-      metalType
+      metalType,
+      allowNetwork: false
     });
     if (!response?.ok) {
       setHistoryRows([]);
@@ -245,7 +246,14 @@ function GoldPriceChart() {
 
   useEffect(() => {
     const id = window.setTimeout(() => { loadHistory(); }, 0);
-    return () => window.clearTimeout(id);
+    const handleRatesUpdated = (event) => {
+      if (event?.detail?.name === "history") loadHistory();
+    };
+    window.addEventListener("augmontRatesUpdated", handleRatesUpdated);
+    return () => {
+      window.clearTimeout(id);
+      window.removeEventListener("augmontRatesUpdated", handleRatesUpdated);
+    };
   }, [loadHistory]);
 
   const handleApplyRange = () => {

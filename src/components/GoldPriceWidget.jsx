@@ -166,8 +166,8 @@ function GoldPriceWidget() {
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => { loadRates(); }, 0);
-    // TC4 FIX: auto-refresh every 60 seconds (1 minute) as required by UAT TC4
-    const intervalId = window.setInterval(loadRates, 60000);
+    // Auto-refresh every 30 seconds.
+    const intervalId = window.setInterval(loadRates, 30000);
     return () => {
       window.clearTimeout(timeoutId);
       window.clearInterval(intervalId);

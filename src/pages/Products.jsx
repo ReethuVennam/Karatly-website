@@ -632,7 +632,7 @@ export default function Products() {
 
     try {
       // Fetch live rates
-      const ratesResponse = await fetchLiveGoldRateSnapshot();
+      const ratesResponse = await fetchLiveGoldRateSnapshot({ allowNetwork: false });
       if (!ratesResponse?.ok || !ratesResponse?.snapshot?.sellPrice) {
         throw new Error("Unable to fetch live sell rate");
       }
