@@ -4,9 +4,10 @@ import { ShieldCheck, User, Smartphone, KeyRound } from "lucide-react";
 import toast from "react-hot-toast";
 import { sendOtp, setUserProfile, verifyOtp } from "../api/authApi";
 import { createAugmontUser } from "../api/augmontApi";
+import { buildMobileDobUniqueId } from "../utils/uniqueId";
 
-const buildUniqueId = (mobileNumber) =>
-  `KTL-${String(mobileNumber || "").replace(/\D/g, "").slice(-10)}`;
+const buildUniqueId = (mobileNumber, dateOfBirth) =>
+  buildMobileDobUniqueId({ mobileNumber, dateOfBirth });
 
 
 export default function Login() {
@@ -72,7 +73,12 @@ export default function Login() {
     // Create Augmont user (or confirm already exists)
     setStep("creating_user");
 
-    const uniqueId = buildUniqueId(mobileNumber);
+    const profileDob =
+      response?.userInfo?.dateOfBirth ||
+      response?.userInfo?.dob ||
+      response?.userInfo?.birthDate ||
+      "";
+    const uniqueId = buildUniqueId(mobileNumber, profileDob) || response?.uniqueId || "";
     const cleanMobile = String(mobileNumber).replace(/\D/g, "").slice(-10);
 
     const augmontResponse = await createAugmontUser({
@@ -96,12 +102,12 @@ export default function Login() {
       String(augmontResponse?.raw?.payload?.message || "").toLowerCase().includes("taken");
 
     if (augmontResponse?.ok || alreadyExists) {
-      setUserProfile({ email, mobileNumber: cleanMobile, uniqueId });
+      setUserProfile({ email, mobileNumber: cleanMobile, dateOfBirth: profileDob, uniqueId });
       if (!alreadyExists) toast.success("Augmont account created");
     } else {
       console.warn("Augmont user create failed:", augmontResponse?.message);
       toast("Account setup incomplete — you can complete it in Profile.", { icon: "⚠️" });
-      setUserProfile({ email, mobileNumber: cleanMobile, uniqueId });
+      setUserProfile({ email, mobileNumber: cleanMobile, dateOfBirth: profileDob, uniqueId });
     }
 
     navigate("/dashboard");

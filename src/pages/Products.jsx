@@ -26,6 +26,7 @@ import {
   setAugmontUser
 } from "../api/augmontApi";
 import { prepareAugmontOrderContext } from "../utils/augmontOrderContext";
+import { buildMobileDobUniqueId } from "../utils/uniqueId";
 
 const initialPagination = {
   hasMore: false,
@@ -36,8 +37,8 @@ const initialPagination = {
 
 const paymentModes = ["UPI", "NET_BANKING", "CARD"];
 const showLegacyTradeActions = false;
-const buildGeneratedUniqueId = (mobileNumber = "") =>
-  String(mobileNumber || "").replace(/\D/g, "").slice(-10);
+const buildGeneratedUniqueId = (mobileNumber = "", dateOfBirth = "") =>
+  buildMobileDobUniqueId({ mobileNumber, dateOfBirth });
 
 const formatPrice = (value) =>
   Number(value || 0).toLocaleString("en-IN", {
@@ -370,7 +371,8 @@ export default function Products() {
     const nextUniqueId =
       uniqueId ||
       buildGeneratedUniqueId(
-        onboardingForm.mobileNumber || appProfile?.mobileNumber || ""
+        onboardingForm.mobileNumber || appProfile?.mobileNumber || "",
+        appProfile?.dateOfBirth || appProfile?.dob || ""
       );
     const userRequest = {
       mobileNumber: onboardingForm.mobileNumber || appProfile?.mobileNumber || "",

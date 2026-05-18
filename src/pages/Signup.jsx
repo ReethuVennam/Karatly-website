@@ -9,6 +9,7 @@ import {
   createAugmontUser,
   setAugmontUser
 } from "../api/augmontApi";
+import { buildMobileDobUniqueId } from "../utils/uniqueId";
 
 const initialFormValues = {
   userName: "",
@@ -192,11 +193,11 @@ export default function Signup() {
       return;
     }
 
-    // Auto-generate uniqueId from mobile number — never entered by user
-    const autoUniqueId = `KTL-${formValues.mobileNumber
-      .trim()
-      .replace(/\D/g, "")
-      .slice(-10)}`;
+    // Auto-generate uniqueId from mobile number + DOB - never entered by user
+    const autoUniqueId = buildMobileDobUniqueId({
+      mobileNumber: formValues.mobileNumber,
+      dateOfBirth: formValues.dateOfBirth
+    });
 
     const augmontResponse = await createAugmontUser({
       mobileNumber: formValues.mobileNumber.trim(),
@@ -240,6 +241,7 @@ export default function Signup() {
       email: formValues.emailId.trim(),
       mobileNumber: formValues.mobileNumber.trim(),
       pinCode: formValues.userPincode.trim(),
+      dateOfBirth: formValues.dateOfBirth,
       uniqueId: autoUniqueId,
       augmontState: formValues.stateName.trim(),
       augmontCity: formValues.cityName.trim(),

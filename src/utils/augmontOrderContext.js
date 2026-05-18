@@ -6,6 +6,7 @@ import {
   getAugmontUser,
   setAugmontUser
 } from "../api/augmontApi";
+import { buildMobileDobUniqueId } from "./uniqueId";
 
 const DEFAULT_STATE = "Maharashtra";
 const DEFAULT_CITY = "Mumbai";
@@ -22,7 +23,16 @@ const buildUniqueId = (profile = {}, augmontUser = {}) => {
     .replace(/\D/g, "")
     .slice(-10);
 
-  if (mobileNumber) return `KTL-${mobileNumber}`;
+  const dateOfBirth =
+    profile?.dateOfBirth ||
+    profile?.dob ||
+    profile?.birthDate ||
+    augmontUser?.dateOfBirth ||
+    augmontUser?.dob ||
+    "";
+  const mobileDobUniqueId = buildMobileDobUniqueId({ mobileNumber, dateOfBirth });
+
+  if (mobileDobUniqueId) return mobileDobUniqueId;
 
   const fallbackDigits = String(
     profile?.uniqueId ||

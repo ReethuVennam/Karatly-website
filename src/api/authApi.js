@@ -1,6 +1,9 @@
+import { buildMobileDobUniqueId } from "../utils/uniqueId";
+
 const BASE_URL =
   import.meta.env.VITE_AUTH_BASE_URL?.trim() ||
   "https://uatauthbckend.karatly.net";
+
 const USER_PROFILE_KEY = "userProfile";
 
 const getJson = async (res) => {
@@ -73,6 +76,15 @@ const extractProfileFromAuthResponse = (data) => {
       data?.payload?.pinCode ||
       data?.payload?.pincode ||
       "",
+    dateOfBirth:
+      user?.dateOfBirth ||
+      user?.dob ||
+      user?.birthDate ||
+      data?.dateOfBirth ||
+      data?.dob ||
+      data?.payload?.dateOfBirth ||
+      data?.payload?.dob ||
+      "",
     uniqueId:
       user?.augmontUniqueId ||
       user?.uniqueId ||
@@ -130,6 +142,7 @@ export const setUserProfile = ({
   email = "",
   mobileNumber = "",
   pinCode = "",
+  dateOfBirth = "",
   uniqueId = "",
   partnerUserId = "",
   customerMappedId = "",
@@ -149,15 +162,31 @@ export const setUserProfile = ({
   profilePhoto = null,
 } = {}) => {
   const existingProfile = getUserProfile();
+  const nextMobileNumber =
+    mobileNumber?.trim() || existingProfile?.mobileNumber || "";
+  const nextDateOfBirth =
+    String(dateOfBirth || "").trim() ||
+    existingProfile?.dateOfBirth ||
+    existingProfile?.dob ||
+    "";
+  const generatedUniqueId = buildMobileDobUniqueId({
+    mobileNumber: nextMobileNumber,
+    dateOfBirth: nextDateOfBirth
+  });
   const nextProfile = {
     fullName:
       fullName?.trim() ||
       existingProfile?.fullName ||
       buildDisplayName({ fullName, email, mobileNumber }),
     email: email?.trim() || existingProfile?.email || "",
-    mobileNumber: mobileNumber?.trim() || existingProfile?.mobileNumber || "",
+    mobileNumber: nextMobileNumber,
     pinCode: pinCode?.trim() || existingProfile?.pinCode || "",
-    uniqueId: uniqueId?.trim() || existingProfile?.uniqueId || "",
+    dateOfBirth: nextDateOfBirth,
+    uniqueId:
+      generatedUniqueId ||
+      uniqueId?.trim() ||
+      existingProfile?.uniqueId ||
+      "",
     partnerUserId:
       String(partnerUserId || "").trim() || existingProfile?.partnerUserId || "",
     customerMappedId:
