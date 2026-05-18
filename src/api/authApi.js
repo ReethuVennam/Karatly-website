@@ -261,11 +261,11 @@ export const verifyOtp = async ({ mobileNumber, otp, type = "login", email, full
         ? "/auth/register/verify-otp"
         : "/auth/login/verify-otp";
 
-    // Register endpoint requires email + fullName; login only needs mobileNumber + otp
+    // Register endpoint requires email + fullName; login requires mobileNumber + otp + email
     const body =
       type === "register"
         ? { mobileNumber, otp, type, email, emailId: email, fullName, userName: fullName }
-        : { mobileNumber, otp, type };
+        : { mobileNumber, otp, email };
 
     const res = await fetch(`${BASE_URL}${endpoint}`, {
       method: "POST",

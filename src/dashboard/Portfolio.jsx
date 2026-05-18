@@ -32,6 +32,11 @@ const getInitialTab = (location) => {
     : "overview";
 };
 
+const toNumber = (value, fallback = 0) => {
+  const parsed = Number(String(value ?? "").replace(/,/g, ""));
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
 export default function Portfolio() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -61,35 +66,37 @@ export default function Portfolio() {
     const load = async () => {
       try {
         // ── Step 1: Get live rates ───────────────────────────────────────────
-        // Use cached rate if less than 5 minutes old to avoid 429 on tab switch
-        const cachedSellRate = localStorage.getItem("goldSellRate");
-        const cachedRateTime = parseInt(localStorage.getItem("goldSellRateTime") || "0");
-        const isCacheValid = cachedSellRate && (Date.now() - cachedRateTime < 5 * 60 * 1000);
+        // Fetch the live Augmont gBuy rate used for portfolio valuation.
+        let buyRate = toNumber(localStorage.getItem("goldPrice"));
+        let sellRate = 0;
 
-        let buyRate = Number(localStorage.getItem("goldPrice") || 0);
-        let sellRate = isCacheValid ? Number(cachedSellRate) : 0;
-
-        if (!isCacheValid) {
-          const rates = await fetchLiveGoldRateSnapshot();
-          buyRate  = Number(rates?.snapshot?.buyPrice  || 0);
-          sellRate = Number(rates?.snapshot?.sellPrice || 0);
-          if (buyRate  > 0) localStorage.setItem("goldPrice",    String(buyRate));
-          if (sellRate > 0) {
-            localStorage.setItem("goldSellRate",     String(sellRate));
-            localStorage.setItem("goldSellRateTime", String(Date.now()));
-          }
+        const rates = await fetchLiveGoldRateSnapshot();
+        buyRate = toNumber(
+          rates?.snapshot?.buyPrice ??
+            rates?.snapshot?.gold?.buyPrice ??
+            rates?.snapshot?.currentPrice,
+          buyRate
+        );
+        sellRate = toNumber(
+          rates?.snapshot?.sellPrice ?? rates?.snapshot?.gold?.sellPrice
+        );
+        if (buyRate  > 0) localStorage.setItem("goldPrice",    String(buyRate));
+        if (sellRate > 0) {
+          localStorage.setItem("goldSellRate",     String(sellRate));
+          localStorage.setItem("goldSellRateTime", String(Date.now()));
         }
 
         // ── Step 2: Get live gold balance from Augmont passbook (not localStorage)
-        let goldGrams = Number(localStorage.getItem("goldBalance") || 0);
+        let goldGrams = toNumber(localStorage.getItem("goldBalance"));
         if (uniqueId) {
           try {
             const passbookRes = await fetchAugmontPassbook(uniqueId);
             if (passbookRes?.ok) {
               const pb = passbookRes.passbook;
               // Augmont passbook returns goldBalance / silverBalance
-              const liveBalance = Number(
-                pb?.goldBalance ?? pb?.gold ?? pb?.metalBalance ?? goldGrams
+              const liveBalance = toNumber(
+                pb?.goldGrms ?? pb?.goldBalance ?? pb?.gold ?? pb?.metalBalance,
+                goldGrams
               );
               if (liveBalance >= 0) {
                 goldGrams = liveBalance;
@@ -102,8 +109,8 @@ export default function Portfolio() {
         }
         setGold(goldGrams);
 
-        // ── Step 3: Calculate portfolio value at live sell price ─────────────
-        if (sellRate > 0) setValue(goldGrams * sellRate);
+        // Portfolio value = passbook goldGrms * live gBuy.
+        setValue(buyRate > 0 ? goldGrams * buyRate : 0);
 
         // ── Step 4: Calculate invested amount using weighted average cost ────────
         // Net Invested = goldHeld × weightedAvgBuyPrice
@@ -115,8 +122,8 @@ export default function Portfolio() {
               .filter(o => (o.status || "").toLowerCase() !== "cancelled");
 
             // Weighted average buy price = total ₹ paid ÷ total grams bought
-            const totalAmountPaid  = buys.reduce((sum, o) => sum + Number(o.amount || 0), 0);
-            const totalGramsBought = buys.reduce((sum, o) => sum + Number(o.gold   || 0), 0);
+            const totalAmountPaid  = buys.reduce((sum, o) => sum + toNumber(o.amount), 0);
+            const totalGramsBought = buys.reduce((sum, o) => sum + toNumber(o.gold), 0);
             const avgBuyPrice = totalGramsBought > 0
               ? totalAmountPaid / totalGramsBought
               : (buyRate || 0);
