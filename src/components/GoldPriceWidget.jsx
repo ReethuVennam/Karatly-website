@@ -122,15 +122,15 @@ function GoldPriceWidget() {
     getAugmontUser()?.uniqueId || getUserProfile()?.uniqueId || ""
   ).trim();
 
-  const loadRates = useCallback(async () => {
+  const loadRates = useCallback(async ({ forceRates = false } = {}) => {
     setIsLoading(true);
     setError("");
 
     const { fromDate, toDate } = getDateRange();
     const [liveResponse, historyResponse, sipResponse] = await Promise.all([
-      fetchLiveGoldRateSnapshot(),
-      fetchAugmontRateHistory({ fromDate, toDate, metalType }),
-      fetchAugmontSipRates()
+      fetchLiveGoldRateSnapshot({ force: forceRates }),
+      fetchAugmontRateHistory({ fromDate, toDate, metalType, force: forceRates }),
+      fetchAugmontSipRates(undefined, { force: forceRates })
     ]);
 
     if (!liveResponse?.ok && !historyResponse?.ok && !sipResponse?.ok) {
@@ -167,7 +167,10 @@ function GoldPriceWidget() {
   useEffect(() => {
     const timeoutId = window.setTimeout(() => { loadRates(); }, 0);
     // Auto-refresh every 30 seconds.
-    const intervalId = window.setInterval(loadRates, 30000);
+    const intervalId = window.setInterval(
+      () => loadRates({ forceRates: true }),
+      30000
+    );
     return () => {
       window.clearTimeout(timeoutId);
       window.clearInterval(intervalId);

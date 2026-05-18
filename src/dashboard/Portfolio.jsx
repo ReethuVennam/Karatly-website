@@ -82,7 +82,11 @@ export default function Portfolio() {
   }, []);
 
   useEffect(() => {
-    const load = async ({ includePassbook = true, allowNetwork = true } = {}) => {
+    const load = async ({
+      includePassbook = true,
+      allowNetwork = true,
+      forceRates = false
+    } = {}) => {
       try {
         // ── Step 1: Get live rates ───────────────────────────────────────────
         // Fetch the live Augmont sell rate used for portfolio valuation.
@@ -91,9 +95,15 @@ export default function Portfolio() {
 
         const { fromDate, toDate } = getDateRange();
         const [rates] = await Promise.all([
-          fetchLiveGoldRateSnapshot({ allowNetwork }),
-          fetchAugmontSipRates(undefined, { allowNetwork }),
-          fetchAugmontRateHistory({ fromDate, toDate, metalType: "gold", allowNetwork })
+          fetchLiveGoldRateSnapshot({ allowNetwork, force: forceRates }),
+          fetchAugmontSipRates(undefined, { allowNetwork, force: forceRates }),
+          fetchAugmontRateHistory({
+            fromDate,
+            toDate,
+            metalType: "gold",
+            allowNetwork,
+            force: forceRates
+          })
         ]);
         buyRate = toNumber(
           rates?.snapshot?.buyPrice ??
@@ -180,7 +190,7 @@ export default function Portfolio() {
     };
     window.addEventListener("goldBalanceUpdated", handleBalanceUpdated);
     const intervalId = window.setInterval(
-      () => load({ includePassbook: false }),
+      () => load({ includePassbook: false, forceRates: true }),
       30 * 1000
     );
     return () => {
