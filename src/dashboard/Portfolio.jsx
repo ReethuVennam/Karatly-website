@@ -66,9 +66,9 @@ export default function Portfolio() {
     const load = async () => {
       try {
         // ── Step 1: Get live rates ───────────────────────────────────────────
-        // Fetch the live Augmont gBuy rate used for portfolio valuation.
+        // Fetch the live Augmont sell rate used for portfolio valuation.
         let buyRate = toNumber(localStorage.getItem("goldPrice"));
-        let sellRate = 0;
+        let sellRate = toNumber(localStorage.getItem("goldSellRate"));
 
         const rates = await fetchLiveGoldRateSnapshot();
         buyRate = toNumber(
@@ -109,8 +109,8 @@ export default function Portfolio() {
         }
         setGold(goldGrams);
 
-        // Portfolio value = passbook goldGrms * live gBuy.
-        setValue(buyRate > 0 ? goldGrams * buyRate : 0);
+        // Portfolio value = passbook goldGrms * live gSell.
+        setValue(sellRate > 0 ? goldGrams * sellRate : 0);
 
         // ── Step 4: Calculate invested amount using weighted average cost ────────
         // Net Invested = goldHeld × weightedAvgBuyPrice
