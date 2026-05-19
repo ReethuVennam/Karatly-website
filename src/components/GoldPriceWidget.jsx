@@ -45,6 +45,11 @@ const cardAnimation = {
 };
 
 const formatCurrency = (value) => currencyFormatter.format(Number(value) || 0);
+const PRIMARY_BANK_ID_KEY = "primaryBankId";
+const getStoredPrimaryBankId = () => String(localStorage.getItem(PRIMARY_BANK_ID_KEY) || "").trim();
+const getStoredPrimaryBank = () => {
+  try { return JSON.parse(localStorage.getItem("primaryBank") || "null"); } catch { return null; }
+};
 
 const getDateRange = () => {
   const toDate = new Date();
@@ -373,21 +378,22 @@ function GoldPriceWidget() {
         return;
       }
 
-      const parsedPrimaryBank = (() => {
-        try {
-          return JSON.parse(localStorage.getItem("primaryBank") || "null");
-        } catch {
-          return null;
-        }
-      })();
+      const storedPrimaryBankId = getStoredPrimaryBankId();
+      const storedPrimaryBank = getStoredPrimaryBank();
 
       const primaryBank =
         response.banks.find(
           (bank) =>
-            parsedPrimaryBank &&
+            storedPrimaryBankId &&
+            String(bank?.userBankId || bank?.bankId || bank?.id || "") === storedPrimaryBankId
+        ) ||
+        response.banks.find(
+          (bank) =>
+            storedPrimaryBank &&
             String(bank.accountNumber || "").replace(/\s/g, "") ===
-              String(parsedPrimaryBank.accountNumber || "").replace(/\s/g, "")
-        ) || response.banks[0];
+              String(storedPrimaryBank.accountNumber || "").replace(/\s/g, "")
+        ) ||
+        response.banks[0];
 
       setSelectedBank(primaryBank);
       setSellAccountName(String(primaryBank.accountName || "").trim());

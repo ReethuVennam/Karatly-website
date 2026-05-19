@@ -44,6 +44,14 @@ const detectIfscMismatch = (banks, accountNumber, ifscCode) => {
   return null;
 };
 
+const PRIMARY_BANK_ID_KEY = "primaryBankId";
+const getStoredPrimaryBankId = () => String(localStorage.getItem(PRIMARY_BANK_ID_KEY) || "").trim();
+const setStoredPrimaryBankId = (id) => localStorage.setItem(PRIMARY_BANK_ID_KEY, String(id || "").trim());
+const clearStoredPrimaryBank = () => {
+  localStorage.removeItem(PRIMARY_BANK_ID_KEY);
+  localStorage.removeItem("primaryBank");
+};
+
 const resolveUniqueId = () => {
   const au = getAugmontUser();
   const pr = getUserProfile();
@@ -84,6 +92,7 @@ export default function ProfilePage() {
   const [showBankForm,  setShowBankForm]  = useState(false);
   const [bankAction,    setBankAction]    = useState("create");
   const [selectedBankId, setSelectedBankId] = useState("");
+  const [primaryBankId, setPrimaryBankId] = useState(getStoredPrimaryBankId());
   const [bankForm,      setBankForm]      = useState({ accountName: "", accountNumber: "", ifscCode: "" });
   const [bankLoading,   setBankLoading]   = useState(false);
   const [bankMsg,       setBankMsg]       = useState({ text: "", type: "" });
@@ -137,6 +146,29 @@ export default function ProfilePage() {
     };
     load();
   }, [uniqueId]);
+
+  useEffect(() => {
+    if (!banks.length || !primaryBankId) return;
+    const hasStored = banks.some(bank => String(bank?.userBankId || bank?.id || "").trim() === primaryBankId);
+    if (!hasStored) {
+      clearStoredPrimaryBank();
+      setPrimaryBankId("");
+    }
+  }, [banks, primaryBankId]);
+
+  const makePrimaryBank = (bank) => {
+    const bankId = String(bank?.userBankId || bank?.bankId || bank?.id || "").trim();
+    if (!bankId) return;
+    setStoredPrimaryBankId(bankId);
+    localStorage.setItem("primaryBank", JSON.stringify({
+      userBankId: bankId,
+      accountName: bank.accountName || "",
+      accountNumber: bank.accountNumber || "",
+      ifscCode: bank.ifscCode || ""
+    }));
+    setPrimaryBankId(bankId);
+    setBankMsg({ text: "Primary bank selected.", type: "success" });
+  };
 
   const openAddBank = () => {
     if (banks.length >= MAX_BANKS) {
@@ -208,12 +240,6 @@ export default function ProfilePage() {
     const banksRes = await fetchAugmontUserBanks(uniqueId);
     if (banksRes?.ok) setBanks(banksRes.banks || []);
 
-    localStorage.setItem("primaryBank", JSON.stringify({
-      accountName: accountName.trim(),
-      accountNumber: accountNumber.trim(),
-      ifscCode: ifscCode.trim()
-    }));
-
     setBankMsg({ text: bankAction === "update" ? "Bank updated successfully." : "Bank verified and added successfully.", type: "success" });
     setShowBankForm(false);
   };
@@ -232,12 +258,16 @@ export default function ProfilePage() {
   };
 
   const handleDeleteBank = async (bank) => {
-    const id = String(bank?.userBankId || bank?.id || "");
+    const id = String(bank?.userBankId || bank?.id || "").trim();
     if (!id) return;
     setBankLoading(true);
     const res = await deleteAugmontUserBank({ uniqueId, userBankId: id });
     setBankLoading(false);
     if (res?.ok) {
+      if (id === primaryBankId) {
+        clearStoredPrimaryBank();
+        setPrimaryBankId("");
+      }
       const banksRes = await fetchAugmontUserBanks(uniqueId);
       if (banksRes?.ok) setBanks(banksRes.banks || []);
       setBankMsg({ text: "Bank deleted.", type: "success" });
@@ -446,6 +476,7 @@ export default function ProfilePage() {
                 const id       = String(bank?.userBankId || bank?.id || `bank-${i}`);
                 const modsLeft = MAX_MODS - getBankModCount(id);
                 const accNum   = String(bank.accountNumber || "");
+                const isPrimary = id === primaryBankId;
                 return (
                   <div key={id} className="flex items-center justify-between rounded-xl border border-white/8 bg-black/20 px-5 py-4">
                     <div className="flex items-center gap-4">
@@ -455,13 +486,19 @@ export default function ProfilePage() {
                       <div>
                         <p className="text-sm font-semibold">{bank.accountName || "Bank Account"}</p>
                         <p className="text-xs text-white/40 mt-0.5">****{accNum.slice(-4)} · {bank.ifscCode || "—"}</p>
-                        <div className="mt-1.5 flex items-center gap-2">
+                        <div className="mt-1.5 flex flex-wrap items-center gap-2">
                           <StatusBadge verified label="Verified" />
                           {modsLeft < MAX_MODS && <span className="text-[10px] text-white/25">{modsLeft} edits left</span>}
+                          {isPrimary && <span className="rounded-full bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-300">PRIMARY</span>}
                         </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
+                      {!isPrimary ? (
+                        <button onClick={() => makePrimaryBank(bank)} className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/70 hover:border-yellow-400/40 hover:text-white transition">
+                          Make Primary
+                        </button>
+                      ) : null}
                       <button onClick={() => openEditBank(bank)} disabled={modsLeft === 0} className="rounded-lg border border-white/10 p-2 text-white/40 hover:text-white disabled:opacity-20 transition" title="Edit">
                         <Pencil size={13} />
                       </button>

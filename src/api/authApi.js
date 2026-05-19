@@ -238,6 +238,7 @@ export const clearAuthSession = () => {
   localStorage.removeItem(USER_PROFILE_KEY);
   localStorage.removeItem("goldBalance");
   localStorage.removeItem("primaryBank");
+  localStorage.removeItem("primaryBankId");
   localStorage.removeItem("profilePhoto");
   localStorage.removeItem("augmontUser");
   // Keep goldPrice, goldSellRate, goldSellRateTime — market data, not user-specific

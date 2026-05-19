@@ -22,7 +22,11 @@ const currencyFormatter = new Intl.NumberFormat("en-IN", {
 const formatGrams = (value) => `${Number(value || 0).toFixed(4)} g`;
 const MAX_SELL_AMOUNT = 1000000;
 const SELL_COOLDOWN_HOURS = 48;
-
+const PRIMARY_BANK_ID_KEY = "primaryBankId";
+const getStoredPrimaryBankId = () => String(localStorage.getItem(PRIMARY_BANK_ID_KEY) || "").trim();
+const getStoredPrimaryBank = () => {
+  try { return JSON.parse(localStorage.getItem("primaryBank") || "null"); } catch { return null; }
+};
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const generateMerchantTxnId = (uniqueId) => {
@@ -106,14 +110,17 @@ export default function SellGold() {
     fetchAugmontUserBanks(uniqueId).then(res => {
       if (res?.ok && res.banks?.length > 0) {
         setBanks(res.banks);
-        try {
-          const stored = localStorage.getItem("primaryBank");
-          const parsed = stored ? JSON.parse(stored) : null;
-          const match = parsed
-            ? res.banks.find(b => String(b.accountNumber).slice(-4) === String(parsed.accountNumber || "").slice(-4))
-            : null;
-          setSelectedBank(match || res.banks[0]);
-        } catch { setSelectedBank(res.banks[0]); }
+        const storedPrimaryBankId = getStoredPrimaryBankId();
+        const storedPrimaryBank = getStoredPrimaryBank();
+        const matchById = storedPrimaryBankId
+          ? res.banks.find((b) => String(b?.userBankId || b?.bankId || b?.id || "") === storedPrimaryBankId)
+          : null;
+        const matchByAccount = storedPrimaryBank
+          ? res.banks.find((b) =>
+              String(b?.accountNumber || "").slice(-4) === String(storedPrimaryBank.accountNumber || "").slice(-4)
+            )
+          : null;
+        setSelectedBank(matchById || matchByAccount || res.banks[0]);
       }
     });
   }, [uniqueId]);
