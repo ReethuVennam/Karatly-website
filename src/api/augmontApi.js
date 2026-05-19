@@ -890,27 +890,33 @@ export const updateAugmontUserBank = async ({
     }
   });
 
-export const fetchAugmontUserBanks = async (uniqueId, merchantId) => {
+export const fetchAugmontUserBanks = async (
+  uniqueId,
+  merchantId,
+  { forceAugmontList = false } = {}
+) => {
   if (!uniqueId) {
     return { ok: false, message: "Missing Augmont uniqueId", banks: [] };
   }
 
-  // Use our local DB endpoint — Augmont UAT masks accountNumber/ifscCode in list API
-  try {
-    const res = await fetch(`${BASE_URL}/api/v1/users/banks/list-local`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ uniqueId: String(uniqueId).trim() })
-    });
-    const data = await res.json();
-    if (data?.ok && Array.isArray(data?.banks) && data.banks.length > 0) {
-      return { ok: true, banks: data.banks };
+  if (!forceAugmontList) {
+    // Use our local DB endpoint — Augmont UAT masks accountNumber/ifscCode in list API
+    try {
+      const res = await fetch(`${BASE_URL}/api/v1/users/banks/list-local`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uniqueId: String(uniqueId).trim() })
+      });
+      const data = await res.json();
+      if (data?.ok && Array.isArray(data?.banks) && data.banks.length > 0) {
+        return { ok: true, banks: data.banks };
+      }
+    } catch (e) {
+      console.warn("[fetchAugmontUserBanks] local endpoint failed, falling back to Augmont", e);
     }
-  } catch (e) {
-    console.warn("[fetchAugmontUserBanks] local endpoint failed, falling back to Augmont", e);
   }
 
-  // Fallback to Augmont list API
+  // Augmont list API is the authoritative source for userBankId resolution.
   const response = await requestAugmontUserEndpoint("/api/v1/users/banks/list", {
     merchantId: merchantId || DEFAULT_MERCHANT_ID,
     uniqueId: String(uniqueId || "").trim()

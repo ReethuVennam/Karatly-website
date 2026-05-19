@@ -304,29 +304,14 @@ function GoldPriceWidget() {
     setActiveInvoiceModal(null);
 
     const uniqueId = String(getAugmontUser()?.uniqueId || "").trim();
-    const resolvedBlockId = String(blockId || "").trim();
-    const lockPrice = Number(selectedLiveRates.sellPrice || 0);
-    const merchantTransactionId = generateAugmontTxnId("AUGSEL");
     const quantityValue = Number.parseFloat(sellQuantity || "0");
-    const accountName = String(selectedBank?.accountName || sellAccountName || "").trim();
-    const accountNumber = String(selectedBank?.accountNumber || sellAccountNumber || "").trim();
-    const ifscCode = String(selectedBank?.ifscCode || sellIfscCode || "").trim().toUpperCase();
-
-    if (!(lockPrice > 0)) {
-      setSellLoading(false);
-      setSellError("Live sell rate is unavailable. Please wait for rates to refresh and try again.");
-      return;
-    }
+    const userBankId = String(
+      selectedBank?.userBankId || selectedBank?.bankId || selectedBank?.id || ""
+    ).trim();
 
     if (!uniqueId) {
       setSellLoading(false);
       setSellError("User profile not found. Please log in again.");
-      return;
-    }
-
-    if (!resolvedBlockId) {
-      setSellLoading(false);
-      setSellError("Rate block ID not available. Please click Refresh Rates and try again.");
       return;
     }
 
@@ -336,7 +321,7 @@ function GoldPriceWidget() {
       return;
     }
 
-    if (!selectedBank || !accountName || !accountNumber || !ifscCode) {
+    if (!selectedBank || !userBankId) {
       setSellLoading(false);
       setSellError("Please add bank details in Profile before selling.");
       return;
@@ -344,14 +329,9 @@ function GoldPriceWidget() {
 
     const request = {
       uniqueId,
-      lockPrice: String(lockPrice.toFixed(2)),
       metalType: "gold",
       quantity: quantityValue.toFixed(4),
-      merchantTransactionId,
-      accountName,
-      accountNumber,
-      ifscCode,
-      blockId: resolvedBlockId
+      userBankId
     };
 
     const response = await createAugmontSellOrder({

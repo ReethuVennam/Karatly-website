@@ -639,25 +639,17 @@ export default function Products() {
         throw new Error("Unable to fetch live sell rate");
       }
 
-      const liveSellRate = Number(ratesResponse.snapshot.sellPrice || 0);
-      const liveBlockId = String(ratesResponse.snapshot.blockId || ratesResponse.blockId || "").trim();
-      const liveLockPrice = liveSellRate.toFixed(2);
-      const merchantTransactionId = `KTL-SELL-${Date.now()}`;
+      const userBankId = String(augmontSellForm.userBankId || "").trim();
+      const request = {
+        uniqueId,
+        metalType: String(selectedAugmontProduct?.metalType || "gold").toLowerCase(),
+        quantity: augmontSellForm.quantity,
+        userBankId
+      };
 
-      // Call only the sell order creation API
       const response = await createAugmontSellOrder({
         merchantId: sessionMerchantId,
-        request: {
-          uniqueId,
-          lockPrice: liveLockPrice,
-          metalType: String(selectedAugmontProduct?.metalType || "gold").toLowerCase(),
-          quantity: augmontSellForm.quantity,
-          merchantTransactionId,
-          blockId: liveBlockId,
-          accountName: sellBank.accountName,
-          accountNumber: sellBank.accountNumber,
-          ifscCode: sellBank.ifscCode
-        }
+        request
       });
 
       if (!response?.ok) {

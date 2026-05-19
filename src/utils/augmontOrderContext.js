@@ -1,4 +1,4 @@
-import { getUserProfile, setUserProfile } from "../api/authApi";
+import { getUserProfile, setUserProfile, validateToken } from "../api/authApi";
 import {
   createAugmontAddress,
   createAugmontUser,
@@ -72,6 +72,9 @@ const isExistingUserResponse = (response = {}) => {
 };
 
 export const ensureAugmontUserForOrder = async () => {
+  // Refresh profile from auth backend to pick up any server-assigned uniqueId
+  await validateToken().catch(() => {});
+
   const profile = getUserProfile() || {};
   const augmontUser = getAugmontUser() || {};
   const uniqueId = buildUniqueId(profile, augmontUser);
@@ -108,12 +111,9 @@ export const ensureAugmontUserForOrder = async () => {
     userPincode: profile?.pinCode || augmontUser?.userPincode || DEFAULT_PINCODE
   };
 
-  const response = await createAugmontUser(userRequest);
-
-  if (!response?.ok && !isExistingUserResponse(response)) {
-    throw new Error(response?.message || "Unable to create or identify Augmont user.");
-  }
-
+  // Do not call Augmont user create API here. The sell flow should
+  // directly call `/api/v1/orders/sell/create`. Persist local profile
+  // data so downstream code can include uniqueId in the sell request.
   setUserProfile({
     fullName: userName,
     email: emailId,
@@ -123,16 +123,17 @@ export const ensureAugmontUserForOrder = async () => {
     augmontState: userRequest.stateName,
     augmontCity: userRequest.cityName
   });
+
   setAugmontUser({
     ...augmontUser,
     ...userRequest,
-    profileExists: true
+    profileExists: Boolean(uniqueId)
   });
 
   return {
     uniqueId,
     user: userRequest,
-    createResponse: response
+    createResponse: null
   };
 };
 
@@ -149,7 +150,20 @@ export const ensureAugmontAddressForOrder = async ({ uniqueId, user }) => {
     profile?.pinCode || user?.userPincode || augmontUser?.userPincode || ""
   ).trim();
 
-  if (!address || !pincode) {
+  let resolvedAddress = address;
+  if (!resolvedAddress) {
+    const parts = [
+      profile?.augmontAddress || "",
+      profile?.augmontLandmark || "",
+      profile?.augmontCity || profile?.city || "",
+      profile?.augmontState || profile?.stateName || ""
+    ]
+      .map((part) => String(part || "").trim())
+      .filter(Boolean);
+    resolvedAddress = parts.join(", ");
+  }
+
+  if (!resolvedAddress || !pincode) {
     throw new Error("User address and pincode are required before selling.");
   }
 
@@ -159,7 +173,7 @@ export const ensureAugmontAddressForOrder = async ({ uniqueId, user }) => {
       name: user?.userName || profile?.fullName || "",
       mobileNumber: user?.mobileNumber || profile?.mobileNumber || "",
       email: user?.emailId || profile?.email || "",
-      address,
+      address: resolvedAddress,
       pincode
     }
   });

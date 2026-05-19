@@ -146,6 +146,48 @@ export default function SellGold() {
     setSellFlowError("");
     setSellFlowStatus("placing");
 
+    let currentBank = primaryBank;
+    try {
+      const bankRes = await fetchAugmontUserBanks(uniqueId, undefined, {
+        forceAugmontList: true
+      });
+      if (bankRes?.ok && Array.isArray(bankRes.banks) && bankRes.banks.length > 0) {
+        const remoteBanks = bankRes.banks;
+        setBanks(remoteBanks);
+
+        const selectedId = String(
+          currentBank?.userBankId || currentBank?.bankId || currentBank?.id || ""
+        );
+        const foundById = remoteBanks.find(
+          (b) => String(b?.userBankId || b?.bankId || b?.id || "") === selectedId
+        );
+
+        const foundByAccount =
+          remoteBanks.find(
+            (b) =>
+              String(b?.accountNumber || "").trim() !== "" &&
+              String(currentBank?.accountNumber || "").trim() !== "" &&
+              String(b.accountNumber).trim() === String(currentBank.accountNumber).trim()
+          );
+
+        currentBank = foundById || foundByAccount || remoteBanks[0];
+        if (currentBank) {
+          setSelectedBank(currentBank);
+        }
+      }
+    } catch {
+      // ignore bank refresh failures; use current selection as fallback
+    }
+
+    if (!currentBank) {
+      const message = "No bank account found. Please add one in Profile first.";
+      setSellFlowStatus("failed");
+      setSellFlowError(message);
+      setIsSelling(false);
+      toast.error(message);
+      return;
+    }
+
     let orderContext;
     try {
       orderContext = await prepareAugmontOrderContext("sell");
@@ -182,17 +224,14 @@ export default function SellGold() {
 
     const orderResponse = await createAugmontSellOrder({
       request: {
-        uniqueId: orderContext.uniqueId,
-        lockPrice: liveLockPrice,
-        // FIX: include blockId — backend requires it to resolve the rate block
-        blockId: liveBlockId,
         metalType: "gold",
         quantity: parsedGrams.toFixed(4),
-        merchantTransactionId,
-        accountName: primaryBank.accountName,
-        accountNumber: primaryBank.accountNumber,
-        ifscCode: primaryBank.ifscCode,
-        userBankId: primaryBank?.userBankId || primaryBank?.id || "",
+        uniqueId: orderContext.uniqueId,
+        userBankId:
+          currentBank?.userBankId ||
+          currentBank?.bankId ||
+          currentBank?.id ||
+          "",
       },
     });
 
@@ -462,8 +501,13 @@ export default function SellGold() {
             </div>
             <div className="space-y-3">
               {banks.map((bank, i) => {
-                const id = String(bank?.userBankId || bank?.id || i);
-                const isSelected = selectedBank && String(selectedBank?.userBankId || selectedBank?.id) === id;
+                const id = String(bank?.userBankId || bank?.bankId || bank?.id || i);
+                const isSelected = selectedBank && String(
+                  selectedBank?.userBankId ||
+                  selectedBank?.bankId ||
+                  selectedBank?.id ||
+                  ""
+                ) === id;
                 return (
                   <button
                     key={id}
