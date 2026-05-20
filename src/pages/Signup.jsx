@@ -106,6 +106,7 @@ export default function Signup() {
   const [submitting, setSubmitting] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [alreadyRegistered, setAlreadyRegistered] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [signupWarning, setSignupWarning] = useState("");
   const goldCoins = useMemo(() => Array.from({ length: 8 }), []);
@@ -153,6 +154,12 @@ export default function Signup() {
     setSubmitting(false);
 
     if (!response?.ok) {
+      if (response?.alreadyRegistered) {
+        setAlreadyRegistered(true);
+        setSubmitError(response?.message || "This mobile is already registered.");
+        toast.error(response?.message || "Already registered");
+        return;
+      }
       const message = response?.message || "Failed to send OTP";
       setSubmitError(message);
       toast.error(message);
@@ -387,6 +394,23 @@ export default function Signup() {
                     Go to dashboard
                   </button>
                 </div>
+              ) : alreadyRegistered ? (
+                <div className="flex min-h-[520px] flex-col items-center justify-center text-center">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-rose-500/15 text-rose-300">
+                    <ShieldCheck className="h-8 w-8" />
+                  </div>
+                  <h2 className="mt-6 text-3xl font-bold text-white">Already Registered</h2>
+                  <p className="mt-3 max-w-lg text-sm leading-7 text-yellow-100/80">
+                    {submitError || "This mobile number is already registered. Please login instead."}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => navigate("/login")}
+                    className="mt-8 rounded-xl bg-yellow-400 px-8 py-3 text-sm font-bold text-black transition hover:bg-yellow-300"
+                  >
+                    Login
+                  </button>
+                </div>
               ) : (
                 <>
                   <div className="space-y-3">
@@ -414,6 +438,7 @@ export default function Signup() {
                     onResetOtp={() => {
                       setOtpSent(false);
                       setSubmitError("");
+                      setAlreadyRegistered(false);
                       handleChange("otp", "");
                     }}
                   />

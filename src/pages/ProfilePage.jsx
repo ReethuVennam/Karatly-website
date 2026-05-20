@@ -16,6 +16,7 @@ import {
   fetchAugmontUserBanks,
   fetchAugmontUserProfile,
   getAugmontUser,
+  setPrimaryAugmontUserBank,
   updateAugmontUserBank,
 } from "../api/augmontApi";
 import { transbankValidateBankAccount } from "../api/transbankApi";
@@ -156,9 +157,14 @@ export default function ProfilePage() {
     }
   }, [banks, primaryBankId]);
 
-  const makePrimaryBank = (bank) => {
+  const makePrimaryBank = async (bank) => {
     const bankId = String(bank?.userBankId || bank?.bankId || bank?.id || "").trim();
     if (!bankId) return;
+    const res = await setPrimaryAugmontUserBank({ uniqueId, userBankId: bankId });
+    if (!res?.ok) {
+      setBankMsg({ text: res?.message || "Failed to set primary bank", type: "error" });
+      return;
+    }
     setStoredPrimaryBankId(bankId);
     localStorage.setItem("primaryBank", JSON.stringify({
       userBankId: bankId,

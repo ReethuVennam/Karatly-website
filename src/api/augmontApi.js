@@ -118,13 +118,32 @@ const getJson = async (res) => {
   }
 };
 
+const extractMessageFromHtml = (html) => {
+  if (typeof html !== "string" || !html.includes("<")) return null;
+  const msgMatch = html.match(/<b>Message<\/b>\s*([^<]+)/i);
+  if (msgMatch) return msgMatch[1].trim();
+  const descMatch = html.match(/<b>Description<\/b>\s*([^<]+)/i);
+  if (descMatch) return descMatch[1].trim();
+  return null;
+};
+
 const extractBackendMessage = (data, fallback = "Request failed") => {
   const payloadMessage = data?.payload?.message;
+  const htmlMessage = payloadMessage ? extractMessageFromHtml(payloadMessage) : null;
+  if (htmlMessage) return htmlMessage;
+
   const responseBody = data?.payload?.responseBody;
 
   if (typeof responseBody === "string") {
     try {
       const parsed = JSON.parse(responseBody);
+      const fieldErrors = parsed?.errors;
+      if (fieldErrors && typeof fieldErrors === "object") {
+        const firstField = Object.values(fieldErrors).find(Array.isArray);
+        if (firstField && firstField.length > 0 && firstField[0]?.message) {
+          return firstField[0].message;
+        }
+      }
       return parsed?.message || payloadMessage || fallback;
     } catch {
       return responseBody || payloadMessage || fallback;
@@ -890,6 +909,20 @@ export const updateAugmontUserBank = async ({
     }
   });
 
+export const setPrimaryAugmontUserBank = async ({ uniqueId, userBankId }) => {
+  try {
+    const res = await fetch("/api/v1/users/banks/set-primary", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ uniqueId, userBankId })
+    });
+    const data = await res.json();
+    return data;
+  } catch (error) {
+    return { ok: false, message: error.message };
+  }
+};
+
 export const fetchAugmontUserBanks = async (
   uniqueId,
   merchantId,
@@ -902,7 +935,7 @@ export const fetchAugmontUserBanks = async (
   if (!forceAugmontList) {
     // Use our local DB endpoint — Augmont UAT masks accountNumber/ifscCode in list API
     try {
-      const res = await fetch(`${BASE_URL}/api/v1/users/banks/list-local`, {
+      const res = await fetch(`/api/v1/users/banks/list-local`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ uniqueId: String(uniqueId).trim() })
