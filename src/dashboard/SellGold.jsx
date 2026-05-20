@@ -110,8 +110,14 @@ export default function SellGold() {
     fetchAugmontUserBanks(uniqueId).then(res => {
       if (res?.ok && res.banks?.length > 0) {
         setBanks(res.banks);
-        const primary = res.banks.find(b => b.isPrimary === 1 || b.isPrimary === true);
-        setSelectedBank(primary || res.banks[0]);
+        // First check for locally stored primary bank ID (set via ProfilePage)
+        const storedPrimaryBankId = getStoredPrimaryBankId();
+        const primaryFromStorage = storedPrimaryBankId
+          ? res.banks.find(b => String(b?.userBankId || b?.id || "").trim() === storedPrimaryBankId)
+          : null;
+        // Fall back to backend isPrimary flag, then first bank
+        const primary = primaryFromStorage || res.banks.find(b => b.isPrimary === 1 || b.isPrimary === true) || res.banks[0];
+        setSelectedBank(primary);
       }
     });
   }, [uniqueId]);
