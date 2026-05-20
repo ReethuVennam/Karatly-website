@@ -6,7 +6,6 @@ import {
   validateToken
 } from "../api/authApi";
 import {
-  createAugmontUserBank,
   deleteAugmontUserBank,
   fetchAugmontAddresses,
   fetchAugmontBuyOrders,
@@ -51,6 +50,18 @@ const setStoredPrimaryBankId = (id) => localStorage.setItem(PRIMARY_BANK_ID_KEY,
 const clearStoredPrimaryBank = () => {
   localStorage.removeItem(PRIMARY_BANK_ID_KEY);
   localStorage.removeItem("primaryBank");
+};
+const getBankId = (bank, fallback = "") =>
+  String(
+    bank?.provider_bank_id ||
+    bank?.userBankId ||
+    bank?.bankId ||
+    bank?.id ||
+    fallback
+  ).trim();
+const getProfileBankId = () => {
+  const profile = getUserProfile() || {};
+  return String(profile?.userBankId || profile?.bankId || "").trim();
 };
 
 const resolveUniqueId = () => {
@@ -130,7 +141,16 @@ export default function ProfilePage() {
         setKycStatus((k.status || "pending").toLowerCase());
         setPanNumber(k.panNumber || "");
       }
-      if (banksRes?.ok) setBanks(banksRes.banks || []);
+      if (banksRes?.ok) {
+        const loadedBanks = banksRes.banks || [];
+        const apiPrimaryBank = loadedBanks.find(bank => bank?.isPrimary || bank?.is_primary);
+        setBanks(loadedBanks);
+        if (apiPrimaryBank) {
+          const apiPrimaryBankId = getBankId(apiPrimaryBank);
+          setStoredPrimaryBankId(apiPrimaryBankId);
+          setPrimaryBankId(apiPrimaryBankId);
+        }
+      }
       if (passbookRes?.ok) {
         const pb = passbookRes.passbook || {};
         setGoldBalance(pb.goldGrms || "0.0000");
@@ -159,7 +179,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (!banks.length || !primaryBankId) return;
-    const hasStored = banks.some(bank => String(bank?.userBankId || bank?.id || "").trim() === primaryBankId);
+    const hasStored = banks.some(bank => getBankId(bank) === primaryBankId);
     if (!hasStored) {
       clearStoredPrimaryBank();
       setPrimaryBankId("");
@@ -167,7 +187,7 @@ export default function ProfilePage() {
   }, [banks, primaryBankId]);
 
   const makePrimaryBank = async (bank) => {
-    const bankId = String(bank?.userBankId || bank?.bankId || bank?.id || "").trim();
+    const bankId = getBankId(bank);
     if (!bankId) return;
     const res = await setPrimaryAugmontUserBank({ uniqueId, userBankId: bankId });
     if (!res?.ok) {
@@ -182,6 +202,12 @@ export default function ProfilePage() {
       ifscCode: bank.ifscCode || ""
     }));
     setPrimaryBankId(bankId);
+    setBanks(prevBanks =>
+      prevBanks.map(item => ({
+        ...item,
+        isPrimary: getBankId(item) === bankId
+      }))
+    );
     setBankMsg({ text: "Primary bank selected.", type: "success" });
   };
 
@@ -198,7 +224,7 @@ export default function ProfilePage() {
   };
 
   const openEditBank = (bank) => {
-    const id = String(bank?.userBankId || bank?.id || "");
+    const id = getBankId(bank);
     if (getBankModCount(id) >= MAX_MODS) {
       setBankMsg({ text: "Modification limit reached for this bank.", type: "error" });
       return;
@@ -244,13 +270,32 @@ export default function ProfilePage() {
       return;
     }
 
-    const res = bankAction === "update" && selectedBankId
-      ? await updateAugmontUserBank({ uniqueId, userBankId: selectedBankId, request: { accountNumber: accountNumber.trim(), accountName: accountName.trim(), ifscCode: ifscCode.trim(), status: "active" } })
-      : await createAugmontUserBank({ uniqueId, request: { accountNumber: accountNumber.trim(), accountName: accountName.trim(), ifscCode: ifscCode.trim() } });
+    const targetBankId =
+      selectedBankId ||
+      getProfileBankId() ||
+      getBankId(banks.find(bank => bank?.isPrimary || bank?.is_primary)) ||
+      getBankId(banks[0]);
+
+    if (!targetBankId) {
+      setBankLoading(false);
+      setBankMsg({ text: "Bank account id is required to update bank details.", type: "error" });
+      return;
+    }
+
+    const res = await updateAugmontUserBank({
+      uniqueId,
+      userBankId: targetBankId,
+      request: {
+        accountNumber: accountNumber.trim(),
+        accountName: accountName.trim(),
+        ifscCode: ifscCode.trim(),
+        status: "active"
+      }
+    });
 
     setBankLoading(false);
     if (!res?.ok) { setBankMsg({ text: res?.message || "Failed to save bank.", type: "error" }); return; }
-    if (bankAction === "update") incrementBankMod(selectedBankId);
+    if (bankAction === "update") incrementBankMod(targetBankId);
 
     const banksRes = await fetchAugmontUserBanks(uniqueId);
     if (banksRes?.ok) setBanks(banksRes.banks || []);
@@ -273,7 +318,7 @@ export default function ProfilePage() {
   };
 
   const handleDeleteBank = async (bank) => {
-    const id = String(bank?.userBankId || bank?.id || "").trim();
+    const id = getBankId(bank);
     if (!id) return;
     setBankLoading(true);
     const res = await deleteAugmontUserBank({ uniqueId, userBankId: id });
@@ -488,10 +533,10 @@ export default function ProfilePage() {
           ) : (
             <div className="space-y-3">
               {banks.map((bank, i) => {
-                const id       = String(bank?.userBankId || bank?.id || `bank-${i}`);
+                const id       = getBankId(bank, `bank-${i}`);
                 const modsLeft = MAX_MODS - getBankModCount(id);
                 const accNum   = String(bank.accountNumber || "");
-                const isPrimary = id === primaryBankId;
+                const isPrimary = Boolean(bank?.isPrimary || bank?.is_primary) || id === primaryBankId;
                 return (
                   <div key={id} className="flex items-center justify-between rounded-xl border border-white/8 bg-black/20 px-5 py-4">
                     <div className="flex items-center gap-4">

@@ -132,15 +132,76 @@ router.post("/delete-local", async (req, res) => {
   }
 });
 
+router.post("/primary", async (req, res) => {
+  try {
+    const providerClientReference = String(
+      req.body.provider_client_reference || req.body.uniqueId || ""
+    ).trim();
+
+    if (!providerClientReference) {
+      return res.json({
+        ok: false,
+        message: "provider_client_reference is required",
+        banks: []
+      });
+    }
+
+    const [rows] = await pool.query(
+      `SELECT
+        bank_account_id,
+        client_id,
+        provider,
+        provider_bank_id,
+        account_holder_name,
+        account_number,
+        ifsc_code,
+        status,
+        is_primary,
+        request_payload,
+        response_payload,
+        created_at,
+        updated_at
+      FROM client_bank_accounts
+      WHERE client_id = ? AND is_primary = 1
+      ORDER BY updated_at DESC
+      LIMIT 1`,
+      [providerClientReference]
+    );
+
+    return res.json({
+      ok: true,
+      banks: rows.map(row => ({
+        ...row,
+        is_primary: Boolean(row.is_primary)
+      })),
+      message: "Primary bank account retrieved successfully"
+    });
+  } catch (error) {
+    console.error("primary bank error:", error);
+    return res.json({ ok: false, message: error.message, banks: [] });
+  }
+});
+
 router.post("/set-primary", async (req, res) => {
   try {
-    const { userBankId } = req.body;
-    if (!userBankId) {
-      return res.json({ ok: false, message: "userBankId is required" });
+    const providerClientReference = String(
+      req.body.provider_client_reference || req.body.uniqueId || ""
+    ).trim();
+    const providerBankId = String(
+      req.body.provider_bank_id || req.body.userBankId || ""
+    ).trim();
+
+    if (!providerBankId) {
+      return res.json({ ok: false, message: "provider_bank_id is required" });
     }
+
+    const params = [providerBankId];
+    const clientFilter = providerClientReference ? " AND client_id = ?" : "";
+    if (providerClientReference) params.push(providerClientReference);
+
     const [rows] = await pool.query(
-      `SELECT client_id FROM client_bank_accounts WHERE provider_bank_id = ? LIMIT 1`,
-      [userBankId]
+      `SELECT client_id FROM client_bank_accounts WHERE provider_bank_id = ?${clientFilter} LIMIT 1`,
+      params
     );
     if (rows.length === 0) {
       return res.json({ ok: false, message: "Bank account not found" });
@@ -152,7 +213,7 @@ router.post("/set-primary", async (req, res) => {
     );
     await pool.query(
       `UPDATE client_bank_accounts SET is_primary = 1 WHERE provider_bank_id = ?`,
-      [userBankId]
+      [providerBankId]
     );
     return res.json({ ok: true, message: "Primary bank updated successfully" });
   } catch (error) {

@@ -4,6 +4,7 @@ import { getUserProfile } from "../api/authApi";
 import { buildSellInvoicePdf } from "../utils/augmontInvoicePdf";
 import {
   fetchAugmontUserBanks,
+  fetchAugmontPrimaryUserBank,
   fetchLiveGoldRateSnapshot,
   createAugmontSellOrder,
   fetchAugmontSellOrderDetail,
@@ -27,6 +28,25 @@ const getStoredPrimaryBankId = () => String(localStorage.getItem(PRIMARY_BANK_ID
 const getStoredPrimaryBank = () => {
   try { return JSON.parse(localStorage.getItem("primaryBank") || "null"); } catch { return null; }
 };
+const getBankId = (bank, fallback = "") =>
+  String(
+    bank?.provider_bank_id ||
+    bank?.userBankId ||
+    bank?.bankId ||
+    bank?.id ||
+    fallback
+  ).trim();
+const normalizeBank = (bank) => bank
+  ? {
+      ...bank,
+      userBankId: getBankId(bank),
+      bankId: bank?.bankId || bank?.provider_bank_id || "",
+      accountName: bank?.accountName || bank?.account_holder_name || "",
+      accountNumber: bank?.accountNumber || bank?.account_number || "",
+      ifscCode: bank?.ifscCode || bank?.ifsc_code || "",
+      isPrimary: Boolean(bank?.isPrimary || bank?.is_primary)
+    }
+  : null;
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const generateMerchantTxnId = (uniqueId) => {
@@ -104,19 +124,20 @@ export default function SellGold() {
     };
   }, [loadRate]);
 
-  // Load banks from local DB
+  // Load saved banks for display; sell submission refreshes the primary bank.
   useEffect(() => {
     if (!uniqueId) return;
     fetchAugmontUserBanks(uniqueId).then(res => {
       if (res?.ok && res.banks?.length > 0) {
-        setBanks(res.banks);
+        const normalizedBanks = res.banks.map(normalizeBank).filter(Boolean);
+        setBanks(normalizedBanks);
         // First check for locally stored primary bank ID (set via ProfilePage)
         const storedPrimaryBankId = getStoredPrimaryBankId();
         const primaryFromStorage = storedPrimaryBankId
-          ? res.banks.find(b => String(b?.userBankId || b?.id || "").trim() === storedPrimaryBankId)
+          ? normalizedBanks.find(b => getBankId(b) === storedPrimaryBankId)
           : null;
         // Fall back to backend isPrimary flag, then first bank
-        const primary = primaryFromStorage || res.banks.find(b => b.isPrimary === 1 || b.isPrimary === true) || res.banks[0];
+        const primary = primaryFromStorage || normalizedBanks.find(b => b.isPrimary === true) || normalizedBanks[0];
         setSelectedBank(primary);
       }
     });
@@ -144,30 +165,16 @@ export default function SellGold() {
     if (!hasLiveRate) { toast.error("Live sell rate is unavailable. Please retry."); return; }
     if (parsedGrams <= 0) { toast.error("Enter a valid gram amount."); return; }
     if (parsedGrams > goldOwned) { toast.error("You don't have enough gold to sell."); return; }
-    if (!primaryBank) { toast.error("No bank account found. Please add one in Profile first."); return; }
 
     setIsSelling(true);
     setSellFlowError("");
     setSellFlowStatus("placing");
 
-    let currentBank = primaryBank;
+    let orderContext;
     try {
-      const bankRes = await fetchAugmontUserBanks(uniqueId);
-      if (bankRes?.ok && Array.isArray(bankRes.banks) && bankRes.banks.length > 0) {
-        const remoteBanks = bankRes.banks;
-        setBanks(remoteBanks);
-        const primary = remoteBanks.find(b => b.isPrimary === 1 || b.isPrimary === true);
-        currentBank = primary || remoteBanks[0];
-        if (currentBank) {
-          setSelectedBank(currentBank);
-        }
-      }
-    } catch {
-      // ignore bank refresh failures; use current selection as fallback
-    }
-
-    if (!currentBank) {
-      const message = "No bank account found. Please add one in Profile first.";
+      orderContext = await prepareAugmontOrderContext("sell");
+    } catch (error) {
+      const message = error?.message || "Could not prepare sell order. Please retry.";
       setSellFlowStatus("failed");
       setSellFlowError(message);
       setIsSelling(false);
@@ -175,11 +182,22 @@ export default function SellGold() {
       return;
     }
 
-    let orderContext;
+    let currentBank = null;
     try {
-      orderContext = await prepareAugmontOrderContext("sell");
-    } catch (error) {
-      const message = error?.message || "Could not prepare sell order. Please retry.";
+      const bankRes = await fetchAugmontPrimaryUserBank({ uniqueId: orderContext.uniqueId });
+      if (bankRes?.ok && Array.isArray(bankRes.banks) && bankRes.banks.length > 0) {
+        const normalizedBanks = bankRes.banks.map(normalizeBank).filter(Boolean);
+        currentBank = normalizedBanks.find(bank => bank.isPrimary) || normalizedBanks[0];
+        setBanks(normalizedBanks);
+        setSelectedBank(currentBank);
+      }
+    } catch {
+      currentBank = null;
+    }
+
+    const sellUserBankId = getBankId(currentBank);
+    if (!sellUserBankId) {
+      const message = "No primary bank account found. Please set a primary bank in Profile first.";
       setSellFlowStatus("failed");
       setSellFlowError(message);
       setIsSelling(false);
@@ -214,11 +232,7 @@ export default function SellGold() {
         metalType: "gold",
         quantity: parsedGrams.toFixed(4),
         uniqueId: orderContext.uniqueId,
-        userBankId:
-          currentBank?.userBankId ||
-          currentBank?.bankId ||
-          currentBank?.id ||
-          "",
+        userBankId: sellUserBankId,
       },
     });
 
@@ -247,7 +261,7 @@ export default function SellGold() {
       payout: livePayout,
       lockPrice: liveLockPrice,
       status: detail?.status || order?.status || "Completed",
-      bankAccount: primaryBank.accountNumber,
+      bankAccount: currentBank?.accountNumber || primaryBank?.accountNumber || "",
     });
 
     const backendGoldBalance = Number(
@@ -481,7 +495,7 @@ export default function SellGold() {
       {/* Action buttons */}
       <div className="grid gap-3 md:grid-cols-2">
         <button onClick={handleSell}
-          disabled={!hasLiveRate || isRateLoading || isSelling || parsedGrams <= 0 || parsedGrams > goldOwned || !primaryBank || payout > MAX_SELL_AMOUNT}
+          disabled={!hasLiveRate || isRateLoading || isSelling || parsedGrams <= 0 || parsedGrams > goldOwned || payout > MAX_SELL_AMOUNT}
           className="w-full rounded-xl bg-yellow-500 py-3 font-semibold text-black transition hover:scale-105 disabled:cursor-not-allowed disabled:opacity-60">
           {isSelling ? "Placing Sell Order…" : "Sell Gold"}
         </button>
@@ -502,13 +516,8 @@ export default function SellGold() {
             </div>
             <div className="space-y-3">
               {banks.map((bank, i) => {
-                const id = String(bank?.userBankId || bank?.bankId || bank?.id || i);
-                const isSelected = selectedBank && String(
-                  selectedBank?.userBankId ||
-                  selectedBank?.bankId ||
-                  selectedBank?.id ||
-                  ""
-                ) === id;
+                const id = getBankId(bank, i);
+                const isSelected = selectedBank && getBankId(selectedBank) === id;
                 return (
                   <button
                     key={id}

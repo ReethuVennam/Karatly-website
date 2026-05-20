@@ -911,13 +911,38 @@ export const updateAugmontUserBank = async ({
 
 export const setPrimaryAugmontUserBank = async ({ uniqueId, userBankId }) => {
   try {
-    const res = await fetch("http://localhost:4000/api/v1/users/banks/set-primary", {
+    const res = await fetch(`${BASE_URL}/api/v1/users/banks/set-primary`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ uniqueId, userBankId })
+      body: JSON.stringify({
+        provider_client_reference: String(uniqueId || "").trim(),
+        provider_bank_id: String(userBankId || "").trim()
+      })
     });
-    const data = await res.json();
-    return data;
+    const data = await getJson(res);
+    const statusCode = String(extractStatusCode(data) || "");
+    const isSuccess =
+      res.ok &&
+      (data?.ok ||
+        data?.status === "success" ||
+        !data?.status ||
+        statusCode.startsWith("2") ||
+        /success/i.test(data?.message || data?.payload?.message || ""));
+
+    return isSuccess
+      ? {
+          ok: true,
+          message:
+            data?.message ||
+            data?.payload?.message ||
+            "Primary bank updated successfully",
+          raw: data
+        }
+      : {
+          ok: false,
+          message: extractBackendMessage(data, "Failed to set primary bank"),
+          raw: data
+        };
   } catch (error) {
     return { ok: false, message: error.message };
   }
@@ -925,28 +950,10 @@ export const setPrimaryAugmontUserBank = async ({ uniqueId, userBankId }) => {
 
 export const fetchAugmontUserBanks = async (
   uniqueId,
-  merchantId,
-  { forceAugmontList = false } = {}
+  merchantId
 ) => {
   if (!uniqueId) {
     return { ok: false, message: "Missing Augmont uniqueId", banks: [] };
-  }
-
-  if (!forceAugmontList) {
-    // Use our local DB endpoint — Augmont UAT masks accountNumber/ifscCode in list API
-    try {
-      const res = await fetch(`/api/v1/users/banks/list-local`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ uniqueId: String(uniqueId).trim() })
-      });
-      const data = await res.json();
-      if (data?.ok && Array.isArray(data?.banks) && data.banks.length > 0) {
-        return { ok: true, banks: data.banks };
-      }
-    } catch (e) {
-      console.warn("[fetchAugmontUserBanks] local endpoint failed, falling back to Augmont", e);
-    }
   }
 
   // Augmont list API is the authoritative source for userBankId resolution.
@@ -970,6 +977,48 @@ export const fetchAugmontUserBanks = async (
     banks: Array.isArray(result) ? result : [],
     raw: response.raw
   };
+};
+
+export const fetchAugmontPrimaryUserBank = async ({ uniqueId }) => {
+  try {
+    const res = await fetch(`${BASE_URL}/api/v1/users/banks/primary`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        provider_client_reference: String(uniqueId || "").trim()
+      })
+    });
+    const data = await getJson(res);
+
+    if (!res.ok || data?.ok === false || data?.status === "error") {
+      return {
+        ok: false,
+        message: extractBackendMessage(data, "Failed to fetch primary bank"),
+        banks: [],
+        raw: data
+      };
+    }
+
+    const banks = Array.isArray(data?.banks)
+      ? data.banks
+      : Array.isArray(data?.data?.banks)
+        ? data.data.banks
+        : [];
+
+    return {
+      ok: true,
+      banks,
+      bank: banks[0] || null,
+      message: data?.message || "Primary bank account retrieved successfully",
+      raw: data
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      message: error.message || "Failed to fetch primary bank",
+      banks: []
+    };
+  }
 };
 
 export const deleteAugmontUserBank = async ({
