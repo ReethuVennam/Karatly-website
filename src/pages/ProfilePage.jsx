@@ -6,6 +6,7 @@ import {
   validateToken
 } from "../api/authApi";
 import {
+  createAugmontUserBank,
   deleteAugmontUserBank,
   fetchAugmontAddresses,
   fetchAugmontBuyOrders,
@@ -62,6 +63,23 @@ const getBankId = (bank, fallback = "") =>
 const getProfileBankId = () => {
   const profile = getUserProfile() || {};
   return String(profile?.userBankId || profile?.bankId || "").trim();
+};
+const getCreatedBankId = (response) => {
+  const result =
+    response?.data?.payload?.result?.data ||
+    response?.raw?.payload?.result?.data ||
+    response?.data?.payload?.result ||
+    response?.raw?.payload?.result ||
+    response?.bank ||
+    {};
+
+  return String(
+    result?.userBankId ||
+    result?.provider_bank_id ||
+    result?.bankId ||
+    response?.userBankId ||
+    ""
+  ).trim();
 };
 
 const resolveUniqueId = () => {
@@ -270,11 +288,47 @@ export default function ProfilePage() {
       return;
     }
 
-    const targetBankId =
-      selectedBankId ||
-      getProfileBankId() ||
-      getBankId(banks.find(bank => bank?.isPrimary || bank?.is_primary)) ||
-      getBankId(banks[0]);
+    const createRequest = {
+      accountNumber: accountNumber.trim(),
+      accountName: accountName.trim(),
+      ifscCode: ifscCode.trim()
+    };
+    let targetBankId =
+      bankAction === "update"
+        ? selectedBankId
+        : "";
+
+    if (bankAction === "create") {
+      const createRes = await createAugmontUserBank({
+        uniqueId,
+        request: createRequest
+      });
+
+      if (!createRes?.ok) {
+        setBankLoading(false);
+        setBankMsg({ text: createRes?.message || "Failed to create bank.", type: "error" });
+        return;
+      }
+
+      targetBankId = getCreatedBankId(createRes);
+
+      if (!targetBankId) {
+        const banksRes = await fetchAugmontUserBanks(uniqueId);
+        const latestBanks = banksRes?.ok && Array.isArray(banksRes.banks) ? banksRes.banks : [];
+        const matchedBank = latestBanks.find(bank =>
+          String(bank?.accountNumber || bank?.account_number || "").replace(/\s/g, "") === createRequest.accountNumber &&
+          String(bank?.ifscCode || bank?.ifsc_code || "").toUpperCase() === createRequest.ifscCode.toUpperCase()
+        );
+        setBanks(latestBanks);
+        targetBankId = getBankId(matchedBank) || getBankId(latestBanks[0]);
+      }
+    } else {
+      targetBankId =
+        targetBankId ||
+        getProfileBankId() ||
+        getBankId(banks.find(bank => bank?.isPrimary || bank?.is_primary)) ||
+        getBankId(banks[0]);
+    }
 
     if (!targetBankId) {
       setBankLoading(false);
@@ -286,9 +340,7 @@ export default function ProfilePage() {
       uniqueId,
       userBankId: targetBankId,
       request: {
-        accountNumber: accountNumber.trim(),
-        accountName: accountName.trim(),
-        ifscCode: ifscCode.trim(),
+        ...createRequest,
         status: "active"
       }
     });
