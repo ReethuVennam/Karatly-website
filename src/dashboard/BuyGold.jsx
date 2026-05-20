@@ -339,9 +339,16 @@ export default function BuyGold() {
         <div className="flex items-center rounded-lg border border-white/10 bg-black px-3">
           <span className="text-white/50 pr-2">₹</span>
           <input
-            type="number"
+            type="text"
+            inputMode="decimal"
             value={amount}
             onChange={(e) => { setAmount(e.target.value); setBuyFlowStatus("idle"); setBuyFlowError(""); setOrderResult(null); }}
+            onWheel={(e) => e.preventDefault()}
+            onKeyDown={(e) => {
+              if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+                e.preventDefault();
+              }
+            }}
             className="w-full bg-transparent p-3 outline-none"
             placeholder="Enter amount"
             disabled={!rate}

@@ -9,7 +9,7 @@ function Footer() {
         {/* Brand Section */}
         <div className="col-span-2">
           <h2 className="text-xl font-bold text-yellow-400 mb-4 cursor-default">
-            SabPe Gold
+            Karataly
           </h2>
 
           <p className="text-white/60 mb-6 max-w-sm">
@@ -87,7 +87,7 @@ function Footer() {
 
       {/* Bottom Bar */}
       <div className="max-w-7xl mx-auto px-6 mt-12 pt-6 border-t border-white/10 flex flex-col md:flex-row justify-between text-white/40 text-sm">
-        <p>© 2026 SabPe Gold. All rights reserved.</p>
+        <p>© 2026 Karataly. All rights reserved.</p>
 
         <p className="mt-2 md:mt-0">
           Digital gold investments are subject to market risks. Please read all scheme related documents carefully.

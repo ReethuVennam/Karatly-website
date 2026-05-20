@@ -370,8 +370,22 @@ export default function SellGold() {
       <label className="block">
         <span className="mb-2 block text-sm text-white/60">Gold quantity</span>
         <div className="flex items-center rounded-lg border border-white/10 bg-black px-3">
-          <input type="number" value={grams} onChange={(e) => handleGramChange(e.target.value)}
-            className="w-full bg-transparent p-3 outline-none" disabled={!goldPrice} max={goldOwned} step="0.0001" />
+          <input
+            type="text"
+            inputMode="decimal"
+            value={grams}
+            onChange={(e) => handleGramChange(e.target.value)}
+            onWheel={(e) => e.preventDefault()}
+            onKeyDown={(e) => {
+              if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+                e.preventDefault();
+              }
+            }}
+            className="w-full bg-transparent p-3 outline-none"
+            disabled={!goldPrice}
+            max={goldOwned}
+            step="0.0001"
+          />
           <span className="text-white/50">g</span>
         </div>
         {parsedGrams > goldOwned && (

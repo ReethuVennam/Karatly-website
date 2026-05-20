@@ -13,12 +13,14 @@ function DashboardNavbar() {
 
       {/* LOGO */}
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 bg-yellow-400 text-black flex items-center justify-center rounded-lg font-bold">
-          SG
-        </div>
-        <h1 className="text-xl font-bold">
-          <span className="text-white">SabPe</span>
-          <span className="text-yellow-400"> Gold</span>
+        <img
+          src="/images/karataly-logo.png"
+          alt="Karataly"
+          className="h-14 w-14 rounded-xl bg-white/5 object-cover"
+        />
+        <h1 className="text-2xl font-bold">
+          <span className="text-white">Kara</span>
+          <span className="text-yellow-400">taly</span>
         </h1>
       </div>
 

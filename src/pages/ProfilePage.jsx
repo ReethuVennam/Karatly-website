@@ -138,9 +138,18 @@ export default function ProfilePage() {
         setSellableBalance(pb.sellableBalance || pb.goldGrms || "0.0000");
       }
 
-      // Load addresses
+      // Load addresses and keep only the first one
       fetchAugmontAddresses(uniqueId).then(res => {
-        if (res?.ok) setAddresses(res.addresses || []);
+        if (res?.ok) {
+          const list = Array.isArray(res.addresses) ? res.addresses : [];
+          const firstAddress = list.length ? list[0] : null;
+          setAddresses(firstAddress ? [firstAddress] : []);
+          if (firstAddress) {
+            setCity(firstAddress.cityName || firstAddress.city || city);
+            setStateName(firstAddress.stateName || firstAddress.state || stateName);
+            setPincode(firstAddress.pincode || firstAddress.pinCode || pincode);
+          }
+        }
       });
 
       setLoading(false);

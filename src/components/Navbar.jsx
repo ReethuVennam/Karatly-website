@@ -55,12 +55,14 @@ function Navbar() {
 
           {/* LOGO */}
           <Link to="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-yellow-400 text-black font-bold flex items-center justify-center rounded-lg">
-              SG
-            </div>
-            <div className="text-xl font-semibold">
-              <span className="text-white">SabPe</span>
-              <span className="text-yellow-400"> Gold</span>
+            <img
+              src="/images/karataly-logo.png"
+              alt="Karataly"
+              className="h-14 w-14 rounded-xl bg-white/5 object-cover"
+            />
+            <div className="text-2xl font-semibold">
+              <span className="text-white">Kara</span>
+              <span className="text-yellow-400">tly</span>
             </div>
           </Link>
 
@@ -88,7 +90,7 @@ function Navbar() {
             </Link>
 
             <Link to="/why" className="text-white/80 hover:text-yellow-400">
-              Why SabPe
+              Why Karataly
             </Link>
 
             <Link to="/faq" className="text-white/80 hover:text-yellow-400">
