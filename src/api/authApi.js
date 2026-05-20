@@ -1,4 +1,4 @@
-import { buildMobileDobUniqueId } from "../utils/uniqueId";
+import { buildMobileDobUniqueId, buildAugmontUniqueId } from "../utils/uniqueId";
 
 const BASE_URL =
   import.meta.env.VITE_AUTH_BASE_URL?.trim() ||
@@ -86,7 +86,7 @@ const extractProfileFromAuthResponse = (data) => {
       data?.payload?.dob ||
       "",
     uniqueId:
-      user?.augmontUniqueId ||
+      user?.augmontUniqueId ||      // from validateToken DB (most reliable)
       user?.uniqueId ||
       user?.providerUserId ||
       data?.uniqueId ||
