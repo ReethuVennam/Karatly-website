@@ -13,39 +13,36 @@ const DEFAULT_CITY = "Mumbai";
 const DEFAULT_PINCODE = "400001";
 
 const buildUniqueId = (profile = {}, augmontUser = {}) => {
+  // Priority 1: augmontUniqueId from validateToken (DB-backed, most reliable)
+  const fromDb =
+    profile?.uniqueId ||
+    profile?.augmontUniqueId ||
+    augmontUser?.uniqueId ||
+    "";
+  if (fromDb) return fromDb;
+
+  // Priority 2: reconstruct from mobile + DOB (for users mid-session before validateToken)
   const mobileNumber = String(
     profile?.mobileNumber ||
     profile?.phoneNumber ||
     augmontUser?.mobileNumber ||
-    augmontUser?.phoneNumber ||
     ""
-  )
-    .replace(/\D/g, "")
-    .slice(-10);
+  ).replace(/\D/g, "").slice(-10);
 
   const dateOfBirth =
     profile?.dateOfBirth ||
     profile?.dob ||
-    profile?.birthDate ||
     augmontUser?.dateOfBirth ||
-    augmontUser?.dob ||
     "";
-  const mobileDobUniqueId = buildMobileDobUniqueId({ mobileNumber, dateOfBirth });
 
-  if (mobileDobUniqueId) return mobileDobUniqueId;
+  if (mobileNumber && dateOfBirth) {
+    return buildMobileDobUniqueId({ mobileNumber, dateOfBirth });
+  }
 
-  const fallbackDigits = String(
-    profile?.uniqueId ||
-    profile?.augmontUniqueId ||
-    augmontUser?.uniqueId ||
-    augmontUser?.customerMappedId ||
-    localStorage.getItem("userUniqueId") ||
-    ""
-  )
-    .replace(/\D/g, "")
-    .slice(-10);
+  // Priority 3: KTL-mobile fallback
+  if (mobileNumber) return `KTL-${mobileNumber}`;
 
-  return fallbackDigits;
+  return "";
 };
 
 const isExistingUserResponse = (response = {}) => {
