@@ -911,7 +911,7 @@ export const updateAugmontUserBank = async ({
 
 export const setPrimaryAugmontUserBank = async ({ uniqueId, userBankId }) => {
   try {
-    const res = await fetch("/api/v1/users/banks/set-primary", {
+    const res = await fetch("http://localhost:4000/api/v1/users/banks/set-primary", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ uniqueId, userBankId })
