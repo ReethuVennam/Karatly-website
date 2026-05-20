@@ -4,10 +4,12 @@ import { ShieldCheck, User, Smartphone, KeyRound } from "lucide-react";
 import toast from "react-hot-toast";
 import { sendOtp, setUserProfile, verifyOtp } from "../api/authApi";
 import { createAugmontUser } from "../api/augmontApi";
-import { buildMobileDobUniqueId } from "../utils/uniqueId";
+import { buildMobileDobUniqueId, buildAugmontUniqueId } from "../utils/uniqueId";
 
 const buildUniqueId = (mobileNumber, dateOfBirth) =>
-  buildMobileDobUniqueId({ mobileNumber, dateOfBirth });
+  dateOfBirth
+    ? buildMobileDobUniqueId({ mobileNumber, dateOfBirth })
+    : buildAugmontUniqueId(mobileNumber);
 
 
 export default function Login() {
@@ -73,12 +75,14 @@ export default function Login() {
     // Create Augmont user (or confirm already exists)
     setStep("creating_user");
 
-    const profileDob =
-      response?.userInfo?.dateOfBirth ||
-      response?.userInfo?.dob ||
-      response?.userInfo?.birthDate ||
+    const profileDob = "";
+    // Priority: augmontUniqueId from validateToken (DB-backed)
+    // This is set by gold backend when Augmont user was created during signup
+    const uniqueId =
+      response?.userInfo?.augmontUniqueId ||
+      response?.uniqueId ||
+      buildUniqueId(mobileNumber, profileDob) ||
       "";
-    const uniqueId = buildUniqueId(mobileNumber, profileDob) || response?.uniqueId || "";
     const cleanMobile = String(mobileNumber).replace(/\D/g, "").slice(-10);
 
     const augmontResponse = await createAugmontUser({
