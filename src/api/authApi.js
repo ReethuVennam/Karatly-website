@@ -112,6 +112,7 @@ export const setAuthSession = (token) => {
   // Clear stale gold data from previous session
   localStorage.removeItem("goldBalance");
   localStorage.removeItem("goldPrice");
+  localStorage.removeItem("augmontUser");
 };
 
 const buildDisplayName = ({ fullName, email, mobileNumber }) => {
@@ -383,9 +384,9 @@ export const verifyOtp = async ({
       {};
 
     const uniqueId =
+      userInfo?.augmontUniqueId ||
       data?.payload?.uniqueId ||
       data?.uniqueId ||
-      userInfo?.augmontUniqueId ||
       userInfo?.uniqueId ||
       null;
 

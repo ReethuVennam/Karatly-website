@@ -28,6 +28,7 @@ const initialFormValues = {
 const mobileRegex = /^[6-9]\d{9}$/;
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const pincodeRegex = /^\d{6}$/;
+const userNameRegex = /^[A-Za-z .']+$/;
 const locationOptions = {
   Rajasthan: {
     cities: {
@@ -78,6 +79,8 @@ const buildValidationErrors = (values, otpSent = false) => {
 
   if (!values.userName.trim()) {
     errors.userName = "Full name is required";
+  } else if (!userNameRegex.test(values.userName.trim())) {
+    errors.userName = "Use only letters, spaces, dot, and single quotes";
   }
 
   if (!mobileRegex.test(values.mobileNumber.trim())) {

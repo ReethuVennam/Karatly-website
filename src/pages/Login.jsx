@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { ShieldCheck, User, Smartphone, KeyRound } from "lucide-react";
 import toast from "react-hot-toast";
 import { sendOtp, setUserProfile, verifyOtp } from "../api/authApi";
+import { setAugmontUser } from "../api/augmontApi";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -75,6 +76,12 @@ export default function Login() {
     setStep("done");
 
     setUserProfile({ email, mobileNumber: cleanMobile, dateOfBirth, uniqueId });
+    setAugmontUser({
+      uniqueId,
+      emailId: response?.userInfo?.email || email,
+      mobileNumber: cleanMobile,
+      userName: response?.userInfo?.name || ""
+    });
     navigate("/dashboard");
   };
 
