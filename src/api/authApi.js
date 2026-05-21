@@ -1,4 +1,4 @@
-import { buildMobileDobUniqueId, buildAugmontUniqueId } from "../utils/uniqueId";
+import { buildMobileDobUniqueId } from "../utils/uniqueId";
 
 const BASE_URL =
   import.meta.env.VITE_AUTH_BASE_URL?.trim() ||
@@ -183,8 +183,8 @@ export const setUserProfile = ({
     pinCode: pinCode?.trim() || existingProfile?.pinCode || "",
     dateOfBirth: nextDateOfBirth,
     uniqueId:
-      generatedUniqueId ||
       uniqueId?.trim() ||
+      generatedUniqueId ||
       existingProfile?.uniqueId ||
       "",
     partnerUserId:
@@ -284,17 +284,42 @@ export const sendOtp = async ({
 /* ── VERIFY OTP ──────────────────────────────────────────────── */
 // TC2: Single login per 24h — backend returns HTTP 403 on second login attempt.
 // We detect it and return a clear SESSION_EXISTS code for Login.jsx to handle.
-export const verifyOtp = async ({ mobileNumber, otp, type = "login", email, fullName }) => {
+const formatDateOfBirthForAuth = (value) => {
+  const dateValue = String(value || "").trim();
+  const isoMatch = dateValue.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+  if (!isoMatch) {
+    return dateValue;
+  }
+
+  const [, year, month, day] = isoMatch;
+  return `${day}-${month}-${year}`;
+};
+
+export const verifyOtp = async ({
+  mobileNumber,
+  otp,
+  type = "login",
+  email,
+  fullName,
+  dateOfBirth
+}) => {
   try {
     const endpoint =
       type === "register"
         ? "/auth/register/verify-otp"
         : "/auth/login/verify-otp";
 
-    // Register endpoint requires email + fullName; login requires mobileNumber + otp + email
+    // Register endpoint expects this exact body shape.
     const body =
       type === "register"
-        ? { mobileNumber, otp, type, email, emailId: email, fullName, userName: fullName }
+        ? {
+            fullName,
+            email,
+            mobileNumber,
+            otp,
+            dateOfBirth: formatDateOfBirthForAuth(dateOfBirth)
+          }
         : { mobileNumber, otp, email };
 
     const res = await fetch(`${BASE_URL}${endpoint}`, {
@@ -350,6 +375,7 @@ export const verifyOtp = async ({ mobileNumber, otp, type = "login", email, full
 
     // Extract user info and uniqueId
     const userInfo =
+      data?.userInfo ||
       data?.payload?.user ||
       data?.user ||
       data?.data?.user ||
@@ -359,8 +385,8 @@ export const verifyOtp = async ({ mobileNumber, otp, type = "login", email, full
     const uniqueId =
       data?.payload?.uniqueId ||
       data?.uniqueId ||
-      userInfo?.uniqueId ||
       userInfo?.augmontUniqueId ||
+      userInfo?.uniqueId ||
       null;
 
     const partnerUserId =
@@ -374,7 +400,8 @@ export const verifyOtp = async ({ mobileNumber, otp, type = "login", email, full
     setUserProfile({
       fullName: userInfo?.fullName || userInfo?.name || userInfo?.userName || "",
       email: userInfo?.email || userInfo?.emailId || "",
-      mobileNumber,
+      mobileNumber: userInfo?.mobile || userInfo?.mobileNumber || mobileNumber,
+      dateOfBirth: userInfo?.dateOfBirth || dateOfBirth,
       uniqueId: uniqueId || "",
       partnerUserId
     });

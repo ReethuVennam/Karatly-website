@@ -9,6 +9,7 @@ import {
   createAugmontUser,
   setAugmontUser
 } from "../api/augmontApi";
+import { fetchCities, fetchStates } from "../api/goldUserRegistrationApi";
 import { buildMobileDobUniqueId } from "../utils/uniqueId";
 
 const initialFormValues = {
@@ -58,6 +59,17 @@ const pickCreatedAddress = (addresses, expectedAddress) => {
     addresses.find((address) =>
       String(address?.address || "").trim().toLowerCase() === normalizedExpectedAddress
     ) || addresses[0]
+  );
+};
+
+const pickMasterItemByName = (items, expectedName) => {
+  const normalizedExpectedName = String(expectedName || "").trim().toLowerCase();
+  return (
+    items.find(
+      (item) => String(item?.name || "").trim().toLowerCase() === normalizedExpectedName
+    ) ||
+    items[0] ||
+    null
   );
 };
 
@@ -227,6 +239,7 @@ export default function Signup() {
       email: formValues.emailId.trim(),
       mobileNumber: formValues.mobileNumber.trim(),
       otp: formValues.otp.trim(),
+      dateOfBirth: formValues.dateOfBirth,
       type: "register"
     });
 
@@ -244,13 +257,44 @@ export default function Signup() {
       dateOfBirth: formValues.dateOfBirth
     });
 
+    const stateResponse = await fetchStates(formValues.stateName.trim());
+    const selectedState = pickMasterItemByName(
+      stateResponse?.states || [],
+      formValues.stateName
+    );
+
+    if (!stateResponse?.ok || !selectedState?.id) {
+      const message = stateResponse?.message || "Unable to find selected state.";
+      setSubmitting(false);
+      setSubmitError(message);
+      toast.error(message);
+      return;
+    }
+
+    const cityResponse = await fetchCities(
+      selectedState.id,
+      formValues.cityName.trim()
+    );
+    const selectedCity = pickMasterItemByName(
+      cityResponse?.cities || [],
+      formValues.cityName
+    );
+
+    if (!cityResponse?.ok || !selectedCity?.id) {
+      const message = cityResponse?.message || "Unable to find selected city.";
+      setSubmitting(false);
+      setSubmitError(message);
+      toast.error(message);
+      return;
+    }
+
     const augmontResponse = await createAugmontUser({
       mobileNumber: formValues.mobileNumber.trim(),
       emailId: formValues.emailId.trim(),
       uniqueId: autoUniqueId,
       userName: formValues.userName.trim(),
-      stateName: formValues.stateName.trim(),
-      cityName: formValues.cityName.trim(),
+      stateId: selectedState.id,
+      cityId: selectedCity.id,
       userPincode: formValues.userPincode.trim()
     });
 
@@ -288,6 +332,8 @@ export default function Signup() {
       pinCode: formValues.userPincode.trim(),
       dateOfBirth: formValues.dateOfBirth,
       uniqueId: autoUniqueId,
+      augmontStateId: selectedState.id,
+      augmontCityId: selectedCity.id,
       augmontState: formValues.stateName.trim(),
       augmontCity: formValues.cityName.trim(),
       augmontAddress: formValues.address.trim(),
@@ -301,6 +347,8 @@ export default function Signup() {
         userName: formValues.userName.trim(),
         mobileNumber: formValues.mobileNumber.trim(),
         emailId: formValues.emailId.trim(),
+        stateId: selectedState.id,
+        cityId: selectedCity.id,
         stateName: formValues.stateName.trim(),
         cityName: formValues.cityName.trim(),
         address: formValues.address.trim(),

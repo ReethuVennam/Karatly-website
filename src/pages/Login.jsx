@@ -3,14 +3,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { ShieldCheck, User, Smartphone, KeyRound } from "lucide-react";
 import toast from "react-hot-toast";
 import { sendOtp, setUserProfile, verifyOtp } from "../api/authApi";
-import { createAugmontUser } from "../api/augmontApi";
-import { buildMobileDobUniqueId, buildAugmontUniqueId } from "../utils/uniqueId";
-
-const buildUniqueId = (mobileNumber, dateOfBirth) =>
-  dateOfBirth
-    ? buildMobileDobUniqueId({ mobileNumber, dateOfBirth })
-    : buildAugmontUniqueId(mobileNumber);
-
 
 export default function Login() {
   const navigate = useNavigate();
@@ -72,48 +64,17 @@ export default function Login() {
     // verifyOtp already calls setAuthSession + setUserProfile internally
     toast.success("Login successful");
 
-    // Create Augmont user (or confirm already exists)
-    setStep("creating_user");
-
-    const profileDob = "";
-    // Priority: augmontUniqueId from validateToken (DB-backed)
-    // This is set by gold backend when Augmont user was created during signup
     const uniqueId =
       response?.userInfo?.augmontUniqueId ||
       response?.uniqueId ||
-      buildUniqueId(mobileNumber, profileDob) ||
       "";
+    const dateOfBirth = response?.userInfo?.dateOfBirth || "";
     const cleanMobile = String(mobileNumber).replace(/\D/g, "").slice(-10);
-
-    const augmontResponse = await createAugmontUser({
-      mobileNumber: cleanMobile,
-      emailId: email,
-      uniqueId,
-      userName: email.split("@")[0],
-      stateName: "Maharashtra",
-      cityName: "Mumbai",
-      userPincode: "400001",
-    });
 
     setLoading(false);
     setStep("done");
 
-    const alreadyExists =
-      augmontResponse?.raw?.payload?.statusCode === 409 ||
-      augmontResponse?.raw?.payload?.statusCode === 422 ||
-      String(augmontResponse?.message || "").toLowerCase().includes("already") ||
-      String(augmontResponse?.raw?.payload?.message || "").toLowerCase().includes("already") ||
-      String(augmontResponse?.raw?.payload?.message || "").toLowerCase().includes("taken");
-
-    if (augmontResponse?.ok || alreadyExists) {
-      setUserProfile({ email, mobileNumber: cleanMobile, dateOfBirth: profileDob, uniqueId });
-      if (!alreadyExists) toast.success("Augmont account created");
-    } else {
-      console.warn("Augmont user create failed:", augmontResponse?.message);
-      toast("Account setup incomplete — you can complete it in Profile.", { icon: "⚠️" });
-      setUserProfile({ email, mobileNumber: cleanMobile, dateOfBirth: profileDob, uniqueId });
-    }
-
+    setUserProfile({ email, mobileNumber: cleanMobile, dateOfBirth, uniqueId });
     navigate("/dashboard");
   };
 

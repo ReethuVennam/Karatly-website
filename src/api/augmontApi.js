@@ -791,8 +791,8 @@ export const createAugmontUser = async (request, merchantId) => {
     !request?.emailId ||
     !request?.uniqueId ||
     !request?.userName ||
-    !request?.stateName ||
-    !request?.cityName ||
+    !(request?.stateId || request?.stateName) ||
+    !(request?.cityId || request?.cityName) ||
     !request?.userPincode
   ) {
     return {
@@ -801,6 +801,17 @@ export const createAugmontUser = async (request, merchantId) => {
     };
   }
 
+  const locationRequest =
+    request?.stateId && request?.cityId
+      ? {
+          stateId: String(request?.stateId || "").trim(),
+          cityId: String(request?.cityId || "").trim()
+        }
+      : {
+          stateName: String(request?.stateName || "").trim(),
+          cityName: String(request?.cityName || "").trim()
+        };
+
   const response = await requestAugmontUserEndpoint("/api/v1/users/create", {
     merchantId: merchantId || DEFAULT_MERCHANT_ID,
     request: {
@@ -808,8 +819,7 @@ export const createAugmontUser = async (request, merchantId) => {
       emailId: String(request?.emailId || "").trim(),
       uniqueId: String(request?.uniqueId || "").trim(),
       userName: String(request?.userName || "").trim(),
-      stateName: String(request?.stateName || "").trim(),
-      cityName: String(request?.cityName || "").trim(),
+      ...locationRequest,
       userPincode: String(request?.userPincode || "").trim()
     }
   });

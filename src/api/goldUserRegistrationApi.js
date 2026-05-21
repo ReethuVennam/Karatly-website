@@ -93,13 +93,13 @@ const requestRegistrationApi = async (path, body, fallbackMessage) => {
   };
 };
 
-export const fetchStates = async () => {
+export const fetchStates = async (name = "") => {
   const response = await requestRegistrationApi(
     "/api/v1/master/states",
     {
       page: 1,
       count: 100,
-      name: ""
+      name: String(name || "").trim()
     },
     "Failed to fetch states"
   );
@@ -120,14 +120,14 @@ export const fetchStates = async () => {
   };
 };
 
-export const fetchCities = async (stateId) => {
+export const fetchCities = async (stateId, name = "") => {
   const response = await requestRegistrationApi(
     "/api/v1/master/cities",
     {
       stateId,
       page: 1,
-      count: 200,
-      name: ""
+      count: 5,
+      name: String(name || "").trim()
     },
     "Failed to fetch cities"
   );
