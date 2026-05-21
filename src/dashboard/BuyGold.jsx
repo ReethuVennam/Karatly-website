@@ -99,15 +99,12 @@ export default function BuyGold() {
     }
 
     // FY purchase cap: non-KYC users are capped lower; verified users get the higher limit.
+    // panVerified + aadhaarVerified in localStorage are refreshed via validateToken after each KYC step.
+    // This is accurate for the current session without needing an extra Augmont API call during buy.
     try {
-      const [buyRes, kycRes] = await Promise.all([
-        fetchAugmontBuyOrders({ uniqueId }),
-        uniqueId ? fetchAugmontKycProfile(uniqueId).catch(() => null) : Promise.resolve(null),
-      ]);
-      const liveKycStatus = kycRes?.kycProfile?.status || user?.augmontKycStatus || "";
-      const fyLimit = isKycVerifiedStatus(liveKycStatus)
-        ? KYC_VERIFIED_FY_LIMIT
-        : NON_KYC_FY_LIMIT;
+      const buyRes = await fetchAugmontBuyOrders({ uniqueId });
+      const isKycDone = Boolean(user?.panVerified && user?.aadhaarVerified);
+      const fyLimit = isKycDone ? KYC_VERIFIED_FY_LIMIT : NON_KYC_FY_LIMIT;
       const fyStart = new Date();
       fyStart.setMonth(3); fyStart.setDate(1); // April 1
       if (fyStart > new Date()) fyStart.setFullYear(fyStart.getFullYear() - 1);
