@@ -405,15 +405,15 @@ export default function KYCPage() {
         )}
 
         <KycSection icon={<CreditCard size={18} />} title="PAN Verification" subtitle="Validate your PAN for KYC compliance" status={kycApproved ? "verified" : "pending"} defaultOpen={!kycApproved}>
-          <PanSection uniqueId={uniqueId} kycApproved={kycApproved} panNumber={panNumber} onVerified={() => setKycApproved(true)} />
+          <PanSection uniqueId={uniqueId} kycApproved={kycApproved} panNumber={panNumber} onVerified={() => { setKycApproved(true); validateToken().catch(() => {}); }} />
         </KycSection>
 
         <KycSection icon={<User size={18} />} title="Aadhaar Verification" subtitle="Verify via OTP sent to Aadhaar-linked mobile" status={aadhaarVerified ? "verified" : "pending"} defaultOpen={!aadhaarVerified && kycApproved}>
-          <AadhaarSection uniqueId={uniqueId} verified={aadhaarVerified} onVerified={() => setAadhaarVerified(true)} />
+          <AadhaarSection uniqueId={uniqueId} verified={aadhaarVerified} onVerified={() => { setAadhaarVerified(true); validateToken().catch(() => {}); }} />
         </KycSection>
 
         <KycSection icon={<Building2 size={18} />} title="Bank Account" subtitle="Required for gold sell payouts" status={bankVerified ? "verified" : "pending"} defaultOpen={!bankVerified && kycApproved && aadhaarVerified}>
-          <BankSection uniqueId={uniqueId} banks={banks} onVerified={() => {
+          <BankSection uniqueId={uniqueId} banks={banks} onVerified={() => { validateToken().catch(() => {}); {
             fetchAugmontUserBanks(uniqueId).then(async r => {
               if (r?.ok) {
                 const normalizedBanks = await ensureSingleBankPrimary(uniqueId, r.banks || []);
