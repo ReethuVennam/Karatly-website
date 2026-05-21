@@ -413,7 +413,8 @@ export default function KYCPage() {
         </KycSection>
 
         <KycSection icon={<Building2 size={18} />} title="Bank Account" subtitle="Required for gold sell payouts" status={bankVerified ? "verified" : "pending"} defaultOpen={!bankVerified && kycApproved && aadhaarVerified}>
-          <BankSection uniqueId={uniqueId} banks={banks} onVerified={() => { validateToken().catch(() => {}); {
+          <BankSection uniqueId={uniqueId} banks={banks} onVerified={() => {
+            validateToken().catch(() => {});
             fetchAugmontUserBanks(uniqueId).then(async r => {
               if (r?.ok) {
                 const normalizedBanks = await ensureSingleBankPrimary(uniqueId, r.banks || []);
