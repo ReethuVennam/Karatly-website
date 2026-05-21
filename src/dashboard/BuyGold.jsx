@@ -103,20 +103,34 @@ export default function BuyGold() {
     // This is accurate for the current session without needing an extra Augmont API call during buy.
     try {
       const buyRes = await fetchAugmontBuyOrders({ uniqueId });
-      const isKycDone = Boolean(user?.panVerified && user?.aadhaarVerified);
+      const isKycDone = Boolean(user?.panVerified);
       const fyLimit = isKycDone ? KYC_VERIFIED_FY_LIMIT : NON_KYC_FY_LIMIT;
       const fyStart = new Date();
       fyStart.setMonth(3); fyStart.setDate(1); // April 1
       if (fyStart > new Date()) fyStart.setFullYear(fyStart.getFullYear() - 1);
 
       const fyBuys = (buyRes?.orders || []).filter(o => {
-        const d = new Date(o.createdAt || o.date || 0);
+        const d = new Date(o.date || o.createdAt || 0);  // normalized field is "date"
         return d >= fyStart && (o.status || "").toLowerCase() !== "cancelled";
       });
       const fyTotal = fyBuys.reduce((sum, o) => sum + Number(o.amount || 0), 0);
+      const remaining = Math.max(0, fyLimit - fyTotal);
 
       if (fyTotal + amt > fyLimit) {
-        toast.error(`Purchase blocked. Your cumulative gold purchases this financial year will exceed ${currency(fyLimit)}. Remaining limit: ${currency(Math.max(0, fyLimit - fyTotal))}`);
+        if (!user?.panVerified) {
+          toast.error(
+            `Purchase blocked. Non-KYC limit is ${currency(fyLimit)} per financial year. ` +
+            `You have ${currency(remaining)} remaining. ` +
+            `Complete KYC on your Profile page to unlock higher limits.`,
+            { duration: 6000 }
+          );
+        } else {
+          toast.error(
+            `Purchase blocked. Your cumulative gold purchases this financial year will exceed ${currency(fyLimit)}. ` +
+            `Remaining limit: ${currency(remaining)}.`,
+            { duration: 5000 }
+          );
+        }
         return;
       }
     } catch (e) {
@@ -375,9 +389,12 @@ export default function BuyGold() {
       )}
 
       {/* KYC notice */}
-      {!kycVerifiedFromProfile && amt > NON_KYC_FY_LIMIT && (
-        <div className="rounded-xl border border-orange-500/20 bg-orange-500/5 p-4 text-sm text-orange-200">
-          ⚠ KYC verification required for purchases above {currency(NON_KYC_FY_LIMIT)}.
+      {!user?.panVerified && amt > 0 && (
+        <div className="rounded-xl border border-orange-500/30 bg-orange-500/10 p-4 text-sm text-orange-200 flex items-start justify-between gap-3">
+          <span>⚠ Non-KYC users are limited to {currency(NON_KYC_FY_LIMIT)} per financial year. Complete KYC to unlock higher limits.</span>
+          <a href="/kyc" className="shrink-0 rounded-lg bg-orange-500/20 px-3 py-1 text-xs font-semibold text-orange-300 hover:bg-orange-500/30 transition">
+            Complete KYC →
+          </a>
         </div>
       )}
 
