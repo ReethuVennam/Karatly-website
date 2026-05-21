@@ -12,6 +12,7 @@ import {
   updateAugmontKyc,
   createAugmontUserBank,
   getAugmontUser,
+  setPrimaryAugmontUserBank,
 } from "../api/augmontApi";
 import {
   transbankValidatePan,
@@ -22,6 +23,52 @@ import {
 
 const panRegex  = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
 const ifscRegex = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+const PRIMARY_BANK_ID_KEY = "primaryBankId";
+
+const getBankId = (bank, fallback = "") =>
+  String(
+    bank?.provider_bank_id ||
+    bank?.userBankId ||
+    bank?.bankId ||
+    bank?.id ||
+    fallback
+  ).trim();
+
+const storePrimaryBank = (bank, bankId = getBankId(bank)) => {
+  if (!bankId) return;
+  localStorage.setItem(PRIMARY_BANK_ID_KEY, bankId);
+  localStorage.setItem("primaryBank", JSON.stringify({
+    userBankId: bankId,
+    accountName: bank?.accountName || "",
+    accountNumber: bank?.accountNumber || "",
+    ifscCode: bank?.ifscCode || ""
+  }));
+};
+
+const ensureSingleBankPrimary = async (uniqueId, bankList) => {
+  const banks = Array.isArray(bankList) ? bankList : [];
+  const apiPrimaryBank = banks.find(bank => bank?.isPrimary || bank?.is_primary);
+
+  if (apiPrimaryBank) {
+    const apiPrimaryBankId = getBankId(apiPrimaryBank);
+    storePrimaryBank(apiPrimaryBank, apiPrimaryBankId);
+    return banks.map(bank => ({
+      ...bank,
+      isPrimary: getBankId(bank) === apiPrimaryBankId
+    }));
+  }
+
+  if (banks.length === 1) {
+    const onlyBank = banks[0];
+    const onlyBankId = getBankId(onlyBank);
+    if (!onlyBankId) return banks;
+    await setPrimaryAugmontUserBank({ uniqueId, userBankId: onlyBankId }).catch(() => null);
+    storePrimaryBank(onlyBank, onlyBankId);
+    return [{ ...onlyBank, isPrimary: true }];
+  }
+
+  return banks;
+};
 
 const resolveUniqueId = () => {
   const au = getAugmontUser();
@@ -206,6 +253,17 @@ function BankSection({ uniqueId, banks, onVerified }) {
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState("");
 
+  const getCreatedBankId = (response) =>
+    String(
+      response?.data?.payload?.result?.data?.userBankId ||
+      response?.data?.payload?.result?.userBankId ||
+      response?.raw?.payload?.result?.data?.userBankId ||
+      response?.raw?.payload?.result?.userBankId ||
+      response?.bank?.userBankId ||
+      response?.userBankId ||
+      ""
+    ).trim();
+
   const handleSubmit = async () => {
     if (!form.accountName.trim() || !form.accountNumber.trim()) { setError("Account name and number required"); return; }
     if (!ifscRegex.test(form.ifscCode.trim())) { setError("Enter a valid IFSC (e.g. SBIN0001234)"); return; }
@@ -217,7 +275,26 @@ function BankSection({ uniqueId, banks, onVerified }) {
     const r = await createAugmontUserBank({ uniqueId, request: { accountNumber: form.accountNumber.trim(), accountName: form.accountName.trim(), ifscCode: form.ifscCode.trim() } });
     setLoading(false);
     if (!r?.ok) { setError(r?.message || "Could not add bank."); return; }
-    localStorage.setItem("primaryBank", JSON.stringify(form));
+    const createdBankId = getCreatedBankId(r);
+    const isFirstBank = !Array.isArray(banks) || banks.length === 0;
+    if (isFirstBank) {
+      if (createdBankId) {
+        await setPrimaryAugmontUserBank({ uniqueId, userBankId: createdBankId }).catch(() => null);
+        storePrimaryBank(form, createdBankId);
+      } else {
+        const banksRes = await fetchAugmontUserBanks(uniqueId);
+        const latestBanks = banksRes?.ok && Array.isArray(banksRes.banks) ? banksRes.banks : [];
+        const matchedBank = latestBanks.find(bank =>
+          String(bank?.accountNumber || bank?.account_number || "").replace(/\s/g, "") === form.accountNumber.trim() &&
+          String(bank?.ifscCode || bank?.ifsc_code || "").toUpperCase() === form.ifscCode.trim().toUpperCase()
+        );
+        const matchedBankId = getBankId(matchedBank);
+        if (matchedBankId) {
+          await setPrimaryAugmontUserBank({ uniqueId, userBankId: matchedBankId }).catch(() => null);
+          storePrimaryBank(matchedBank, matchedBankId);
+        }
+      }
+    }
     toast.success("Bank verified and added");
     onVerified();
   };
@@ -281,14 +358,15 @@ export default function KYCPage() {
     Promise.all([
       fetchAugmontKycProfile(uniqueId),
       fetchAugmontUserBanks(uniqueId),
-    ]).then(([kycRes, banksRes]) => {
+    ]).then(async ([kycRes, banksRes]) => {
       if (kycRes?.ok) {
         setKycApproved((kycRes.kycProfile?.status || "").toLowerCase() === "approved");
         setPanNumber(kycRes.kycProfile?.panNumber || "");
       }
       if (banksRes?.ok) {
-        setBanks(banksRes.banks || []);
-        setBankVerified((banksRes.banks || []).length > 0);
+        const normalizedBanks = await ensureSingleBankPrimary(uniqueId, banksRes.banks || []);
+        setBanks(normalizedBanks);
+        setBankVerified(normalizedBanks.length > 0);
       }
       setLoading(false);
     });
@@ -336,7 +414,13 @@ export default function KYCPage() {
 
         <KycSection icon={<Building2 size={18} />} title="Bank Account" subtitle="Required for gold sell payouts" status={bankVerified ? "verified" : "pending"} defaultOpen={!bankVerified && kycApproved && aadhaarVerified}>
           <BankSection uniqueId={uniqueId} banks={banks} onVerified={() => {
-            fetchAugmontUserBanks(uniqueId).then(r => { if (r?.ok) { setBanks(r.banks || []); setBankVerified(true); } });
+            fetchAugmontUserBanks(uniqueId).then(async r => {
+              if (r?.ok) {
+                const normalizedBanks = await ensureSingleBankPrimary(uniqueId, r.banks || []);
+                setBanks(normalizedBanks);
+                setBankVerified(normalizedBanks.length > 0);
+              }
+            });
           }} />
         </KycSection>
 

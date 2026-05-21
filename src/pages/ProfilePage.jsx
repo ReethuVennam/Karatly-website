@@ -81,6 +81,16 @@ const getCreatedBankId = (response) => {
     ""
   ).trim();
 };
+const storePrimaryBank = (bank, bankId = getBankId(bank)) => {
+  if (!bankId) return;
+  setStoredPrimaryBankId(bankId);
+  localStorage.setItem("primaryBank", JSON.stringify({
+    userBankId: bankId,
+    accountName: bank?.accountName || "",
+    accountNumber: bank?.accountNumber || "",
+    ifscCode: bank?.ifscCode || ""
+  }));
+};
 
 const resolveUniqueId = () => {
   const au = getAugmontUser();
@@ -132,6 +142,33 @@ export default function ProfilePage() {
   const [passbookData,  setPassbookData]  = useState({ goldGrms: "0.0000", silverGrms: "0.0000" });
   const [sellableBalance, setSellableBalance] = useState("0.0000");
 
+  const ensureSingleBankPrimary = async (bankList) => {
+    const loadedBanks = Array.isArray(bankList) ? bankList : [];
+    const apiPrimaryBank = loadedBanks.find(bank => bank?.isPrimary || bank?.is_primary);
+
+    if (apiPrimaryBank) {
+      const apiPrimaryBankId = getBankId(apiPrimaryBank);
+      storePrimaryBank(apiPrimaryBank, apiPrimaryBankId);
+      setPrimaryBankId(apiPrimaryBankId);
+      return loadedBanks.map(bank => ({
+        ...bank,
+        isPrimary: getBankId(bank) === apiPrimaryBankId
+      }));
+    }
+
+    if (loadedBanks.length === 1) {
+      const onlyBank = loadedBanks[0];
+      const onlyBankId = getBankId(onlyBank);
+      if (!onlyBankId) return loadedBanks;
+      await setPrimaryAugmontUserBank({ uniqueId, userBankId: onlyBankId }).catch(() => null);
+      storePrimaryBank(onlyBank, onlyBankId);
+      setPrimaryBankId(onlyBankId);
+      return [{ ...onlyBank, isPrimary: true }];
+    }
+
+    return loadedBanks;
+  };
+
   useEffect(() => {
     if (!uniqueId) { setLoading(false); return; }
     const load = async () => {
@@ -160,14 +197,7 @@ export default function ProfilePage() {
         setPanNumber(k.panNumber || "");
       }
       if (banksRes?.ok) {
-        const loadedBanks = banksRes.banks || [];
-        const apiPrimaryBank = loadedBanks.find(bank => bank?.isPrimary || bank?.is_primary);
-        setBanks(loadedBanks);
-        if (apiPrimaryBank) {
-          const apiPrimaryBankId = getBankId(apiPrimaryBank);
-          setStoredPrimaryBankId(apiPrimaryBankId);
-          setPrimaryBankId(apiPrimaryBankId);
-        }
+        setBanks(await ensureSingleBankPrimary(banksRes.banks || []));
       }
       if (passbookRes?.ok) {
         const pb = passbookRes.passbook || {};
@@ -213,12 +243,7 @@ export default function ProfilePage() {
       return;
     }
     setStoredPrimaryBankId(bankId);
-    localStorage.setItem("primaryBank", JSON.stringify({
-      userBankId: bankId,
-      accountName: bank.accountName || "",
-      accountNumber: bank.accountNumber || "",
-      ifscCode: bank.ifscCode || ""
-    }));
+    storePrimaryBank(bank, bankId);
     setPrimaryBankId(bankId);
     setBanks(prevBanks =>
       prevBanks.map(item => ({
@@ -273,6 +298,7 @@ export default function ProfilePage() {
       if (mismatch) { setBankMsg({ text: mismatch, type: "error" }); return; }
     }
 
+    const hadBanks = banks.length > 0;
     setBankLoading(true);
     setBankMsg({ text: "", type: "" });
 
@@ -350,7 +376,28 @@ export default function ProfilePage() {
     if (bankAction === "update") incrementBankMod(targetBankId);
 
     const banksRes = await fetchAugmontUserBanks(uniqueId);
-    if (banksRes?.ok) setBanks(banksRes.banks || []);
+    if (banksRes?.ok) {
+      const latestBanks = banksRes.banks || [];
+      if (bankAction === "create" && !hadBanks && targetBankId) {
+        const hasPrimaryBank = latestBanks.some(bank => Boolean(bank?.isPrimary || bank?.is_primary));
+        if (!hasPrimaryBank) {
+          await setPrimaryAugmontUserBank({ uniqueId, userBankId: targetBankId }).catch(() => null);
+        }
+
+        const primaryBank = latestBanks.find(bank => getBankId(bank) === targetBankId) || {
+          ...createRequest,
+          userBankId: targetBankId
+        };
+        storePrimaryBank(primaryBank, targetBankId);
+        setPrimaryBankId(targetBankId);
+        setBanks(latestBanks.map(bank => ({
+          ...bank,
+          isPrimary: getBankId(bank) === targetBankId
+        })));
+      } else {
+        setBanks(latestBanks);
+      }
+    }
 
     setBankMsg({ text: bankAction === "update" ? "Bank updated successfully." : "Bank verified and added successfully.", type: "success" });
     setShowBankForm(false);
@@ -381,7 +428,25 @@ export default function ProfilePage() {
         setPrimaryBankId("");
       }
       const banksRes = await fetchAugmontUserBanks(uniqueId);
-      if (banksRes?.ok) setBanks(banksRes.banks || []);
+      if (banksRes?.ok) {
+        const remainingBanks = banksRes.banks || [];
+        if (remainingBanks.length === 1) {
+          const remainingBankId = getBankId(remainingBanks[0]);
+          if (remainingBankId) {
+            await setPrimaryAugmontUserBank({ uniqueId, userBankId: remainingBankId }).catch(() => null);
+            storePrimaryBank(remainingBanks[0], remainingBankId);
+            setPrimaryBankId(remainingBankId);
+            setBanks(remainingBanks.map(bank => ({
+              ...bank,
+              isPrimary: getBankId(bank) === remainingBankId
+            })));
+          } else {
+            setBanks(remainingBanks);
+          }
+        } else {
+          setBanks(remainingBanks);
+        }
+      }
       setBankMsg({ text: "Bank deleted.", type: "success" });
     } else {
       setBankMsg({ text: res?.message || "Failed to delete bank.", type: "error" });

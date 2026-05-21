@@ -27,10 +27,14 @@ export default function RegistrationForm({
   errors,
   submitting,
   otpSent,
+  locationOptions,
   onChange,
   onSubmit,
   onResetOtp
 }) {
+  const stateNames = Object.keys(locationOptions || {});
+  const cityNames = Object.keys(locationOptions?.[formValues.stateName]?.cities || {});
+
   return (
     <form className="mt-8 space-y-5" onSubmit={onSubmit}>
       <div className="grid gap-5 md:grid-cols-2">
@@ -73,27 +77,37 @@ export default function RegistrationForm({
         </FormField>
 
         <FormField id="stateName" label="State" error={errors.stateName} required>
-          <input
+          <select
             id="stateName"
-            type="text"
             value={formValues.stateName}
             onChange={(event) => onChange("stateName", event.target.value)}
             disabled={otpSent}
-            placeholder="State name"
             className={inputBaseClassName}
-          />
+          >
+            <option value="">Select state</option>
+            {stateNames.map((stateName) => (
+              <option key={stateName} value={stateName}>
+                {stateName}
+              </option>
+            ))}
+          </select>
         </FormField>
 
         <FormField id="cityName" label="City" error={errors.cityName} required>
-          <input
+          <select
             id="cityName"
-            type="text"
             value={formValues.cityName}
             onChange={(event) => onChange("cityName", event.target.value)}
-            disabled={otpSent}
-            placeholder="City name"
+            disabled={otpSent || !formValues.stateName}
             className={inputBaseClassName}
-          />
+          >
+            <option value="">Select city</option>
+            {cityNames.map((cityName) => (
+              <option key={cityName} value={cityName}>
+                {cityName}
+              </option>
+            ))}
+          </select>
         </FormField>
 
         <div className="md:col-span-2">
@@ -101,10 +115,11 @@ export default function RegistrationForm({
             <textarea
               id="address"
               rows={3}
+              minLength={11}
               value={formValues.address}
               onChange={(event) => onChange("address", event.target.value)}
               disabled={otpSent}
-              placeholder="Enter your address"
+              placeholder="Enter your address, more than 10 characters"
               className={inputBaseClassName}
             />
           </FormField>
@@ -129,9 +144,9 @@ export default function RegistrationForm({
             inputMode="numeric"
             maxLength={6}
             value={formValues.userPincode}
-            onChange={(event) => onChange("userPincode", event.target.value)}
+            readOnly
             disabled={otpSent}
-            placeholder="6-digit pincode"
+            placeholder="Auto-generated pincode"
             className={inputBaseClassName}
           />
         </FormField>

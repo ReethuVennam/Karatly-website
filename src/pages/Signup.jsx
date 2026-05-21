@@ -27,6 +27,21 @@ const initialFormValues = {
 const mobileRegex = /^[6-9]\d{9}$/;
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const pincodeRegex = /^\d{6}$/;
+const locationOptions = {
+  Rajasthan: {
+    cities: {
+      Jaipur: "302001"
+    }
+  },
+  Telangana: {
+    cities: {
+      Hyderabad: "500001"
+    }
+  }
+};
+
+const getPincodeForLocation = (stateName, cityName) =>
+  locationOptions[stateName]?.cities?.[cityName] || "";
 
 const isValidDate = (value) => {
   if (!value) return false;
@@ -61,16 +76,16 @@ const buildValidationErrors = (values, otpSent = false) => {
     errors.emailId = "Enter a valid email address";
   }
 
-  if (!values.stateName.trim()) {
-    errors.stateName = "Enter a state name";
+  if (!locationOptions[values.stateName]) {
+    errors.stateName = "Select a state";
   }
 
-  if (!values.cityName.trim()) {
-    errors.cityName = "Enter a city name";
+  if (!getPincodeForLocation(values.stateName, values.cityName)) {
+    errors.cityName = "Select a city";
   }
 
-  if (!values.address.trim()) {
-    errors.address = "Enter an address";
+  if (values.address.trim().length <= 10) {
+    errors.address = "Address must be more than 10 characters";
   }
 
   if (!values.landmark.trim()) {
@@ -114,15 +129,38 @@ export default function Signup() {
   const handleChange = (name, value) => {
     const nextValue = sanitizeValue(name, value);
 
-    setFormValues((current) => ({
-      ...current,
-      [name]: nextValue
-    }));
+    setFormValues((current) => {
+      if (name === "stateName") {
+        return {
+          ...current,
+          stateName: nextValue,
+          cityName: "",
+          userPincode: ""
+        };
+      }
+
+      if (name === "cityName") {
+        return {
+          ...current,
+          cityName: nextValue,
+          userPincode: getPincodeForLocation(current.stateName, nextValue)
+        };
+      }
+
+      return {
+        ...current,
+        [name]: nextValue
+      };
+    });
 
     setErrors((current) => {
-      if (!current[name]) return current;
+      const dependentFields =
+        name === "stateName" ? ["stateName", "cityName", "userPincode"] : [name];
+      if (!dependentFields.some((field) => current[field])) return current;
       const nextErrors = { ...current };
-      delete nextErrors[name];
+      dependentFields.forEach((field) => {
+        delete nextErrors[field];
+      });
       return nextErrors;
     });
 
@@ -433,6 +471,7 @@ export default function Signup() {
                     errors={errors}
                     submitting={submitting}
                     otpSent={otpSent}
+                    locationOptions={locationOptions}
                     onChange={handleChange}
                     onSubmit={handleSubmit}
                     onResetOtp={() => {
