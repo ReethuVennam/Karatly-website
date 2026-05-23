@@ -217,16 +217,21 @@ function BankForm({ uniqueId, existingBanks, editingBank, onClose, onSaved }) {
         res = await updateAugmontUserBank({
           uniqueId,
           userBankId:  editingBank.userBankId || editingBank.bankId,
-          accountName: form.accountName,
-          ifscCode:    form.ifscCode.toUpperCase(),
+          request: {
+            accountName: form.accountName,
+            ifscCode: form.ifscCode.toUpperCase(),
+            status: "active",
+          },
         });
       } else {
         res = await createAugmontUserBank({
           uniqueId,
-          accountName:   form.accountName,
-          accountNumber: form.accountNumber.replace(/\s/g, ""),
-          ifscCode:      form.ifscCode.toUpperCase(),
-          accountType:   form.accountType,
+          request: {
+            accountName: form.accountName,
+            accountNumber: form.accountNumber.replace(/\s/g, ""),
+            ifscCode: form.ifscCode.toUpperCase(),
+            status: "active",
+          },
         });
       }
 

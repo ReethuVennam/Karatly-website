@@ -14,7 +14,6 @@ import {
   fetchAugmontUserProfile,
   createAugmontUser,
   createAugmontUserBank,
-  fetchAugmontAddresses,
   fetchAugmontUserBanks,
   fetchAugmontProducts,
   fetchLiveGoldRateSnapshot,
@@ -428,7 +427,11 @@ export default function Products() {
       merchantId: sessionMerchantId,
       uniqueId: nextUniqueId,
       request: {
-        address: trimmedAddress
+        name: userRequest.userName,
+        mobileNumber: userRequest.mobileNumber,
+        email: userRequest.emailId,
+        address: trimmedAddress,
+        pincode: userRequest.userPincode
       }
     });
 
@@ -440,10 +443,8 @@ export default function Products() {
       return;
     }
 
-    const addressesResponse = await fetchAugmontAddresses(nextUniqueId, sessionMerchantId);
-    const nextAddresses = addressesResponse?.ok ? addressesResponse.addresses || [] : [];
-    const banksResponse = await fetchAugmontUserBanks(nextUniqueId, sessionMerchantId);
-    const nextBanks = banksResponse?.ok ? banksResponse.banks || [] : [];
+    const nextBanks = bankResponse?.bank ? [bankResponse.bank] : [];
+    const nextAddresses = addressCreateResponse?.address ? [addressCreateResponse.address] : [];
 
     setAugmontAddresses(nextAddresses);
 
@@ -521,7 +522,7 @@ export default function Products() {
         profile.userCity || profile.cityName || trimmedCityName,
       createdAt: profile.createdAt || "",
       userBankId: profile.userBankId || "",
-      userAddressId: profile.userAddressId || "",
+      userAddressId: addressCreateResponse?.address?.userAddressId || profile.userAddressId || "",
       profileCompleted: true
     };
 

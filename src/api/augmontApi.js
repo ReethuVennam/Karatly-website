@@ -890,16 +890,33 @@ export const updateAugmontKyc = async ({ uniqueId, request, merchantId }) =>
     request: request || {}
   });
 
-export const createAugmontUserBank = async ({ uniqueId, request, merchantId }) =>
-  requestAugmontUserEndpoint("/api/v1/users/banks/create", {
+export const createAugmontUserBank = async ({
+  uniqueId,
+  request,
+  merchantId,
+  accountNumber,
+  accountName,
+  ifscCode,
+  status
+}) => {
+  const response = await requestAugmontUserEndpoint("/api/v1/users/banks/create", {
     merchantId: merchantId || DEFAULT_MERCHANT_ID,
     uniqueId: String(uniqueId || "").trim(),
     request: {
-      accountNumber: String(request?.accountNumber || "").trim(),
-      accountName: String(request?.accountName || "").trim(),
-      ifscCode: String(request?.ifscCode || "").trim()
+      accountNumber: String(request?.accountNumber || accountNumber || "").trim(),
+      accountName: String(request?.accountName || accountName || "").trim(),
+      ifscCode: String(request?.ifscCode || ifscCode || "").trim(),
+      status: String(request?.status || status || "active").trim()
     }
   });
+
+  if (!response.ok) return response;
+
+  return {
+    ...response,
+    bank: extractOrderResult(response.data)
+  };
+};
 
 export const updateAugmontUserBank = async ({
   uniqueId,
@@ -925,8 +942,8 @@ export const setPrimaryAugmontUserBank = async ({ uniqueId, userBankId }) => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        provider_client_reference: String(uniqueId || "").trim(),
-        provider_bank_id: String(userBankId || "").trim()
+        uniqueId: String(uniqueId || "").trim(),
+        userBankId: String(userBankId || "").trim()
       })
     });
     const data = await getJson(res);
@@ -995,7 +1012,7 @@ export const fetchAugmontPrimaryUserBank = async ({ uniqueId }) => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        provider_client_reference: String(uniqueId || "").trim()
+        uniqueId: String(uniqueId || "").trim()
       })
     });
     const data = await getJson(res);
@@ -1061,8 +1078,6 @@ export const createAugmontAddress = async ({ uniqueId, request, merchantId }) =>
     return response;
   }
 
-  const addressListResponse = await fetchAugmontAddresses(uniqueId, resolvedMerchantId);
-
   return {
     ok: true,
     statusCode: response.statusCode,
@@ -1070,9 +1085,8 @@ export const createAugmontAddress = async ({ uniqueId, request, merchantId }) =>
       response.raw?.payload?.message ||
       response.raw?.message ||
       "Augmont address create request accepted",
-    addresses: addressListResponse?.addresses || [],
+    address: extractOrderResult(response.data),
     raw: response.raw,
-    addressListRaw: addressListResponse?.raw || null
   };
 };
 

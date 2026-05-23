@@ -19,7 +19,6 @@ import {
   setPrimaryAugmontUserBank,
   updateAugmontUserBank,
 } from "../api/augmontApi";
-import { transbankValidateBankAccount } from "../api/transbankApi";
 import {
   User, Shield, ShieldCheck, CreditCard, Building2,
   CheckCircle2, XCircle, AlertCircle, Plus, Pencil,
@@ -302,22 +301,11 @@ export default function ProfilePage() {
     setBankLoading(true);
     setBankMsg({ text: "", type: "" });
 
-    const validateRes = await transbankValidateBankAccount({
-      accountName: accountName.trim(),
-      accountNumber: accountNumber.trim(),
-      ifscCode: ifscCode.trim(),
-    });
-
-    if (!validateRes?.ok || !validateRes?.isValid) {
-      setBankLoading(false);
-      setBankMsg({ text: validateRes?.message || "Bank account validation failed. Please check your details.", type: "error" });
-      return;
-    }
-
     const createRequest = {
       accountNumber: accountNumber.trim(),
       accountName: accountName.trim(),
-      ifscCode: ifscCode.trim()
+      ifscCode: ifscCode.trim(),
+      status: "active"
     };
     let targetBankId =
       bankAction === "update"
@@ -337,17 +325,34 @@ export default function ProfilePage() {
       }
 
       targetBankId = getCreatedBankId(createRes);
+      const createdBank = {
+        ...createRequest,
+        ...(createRes.bank || {}),
+        userBankId: targetBankId || createRes.bank?.userBankId || ""
+      };
+      const banksRes = await fetchAugmontUserBanks(uniqueId);
+      const latestBanks = banksRes?.ok && Array.isArray(banksRes.banks) ? banksRes.banks : [];
+      const normalizedBanks = latestBanks.length > 0
+        ? await ensureSingleBankPrimary(latestBanks)
+        : [];
 
-      if (!targetBankId) {
-        const banksRes = await fetchAugmontUserBanks(uniqueId);
-        const latestBanks = banksRes?.ok && Array.isArray(banksRes.banks) ? banksRes.banks : [];
-        const matchedBank = latestBanks.find(bank =>
-          String(bank?.accountNumber || bank?.account_number || "").replace(/\s/g, "") === createRequest.accountNumber &&
-          String(bank?.ifscCode || bank?.ifsc_code || "").toUpperCase() === createRequest.ifscCode.toUpperCase()
-        );
-        setBanks(latestBanks);
-        targetBankId = getBankId(matchedBank) || getBankId(latestBanks[0]);
+      if (latestBanks.length === 0 && getBankId(createdBank)) {
+        await setPrimaryAugmontUserBank({
+          uniqueId,
+          userBankId: getBankId(createdBank)
+        }).catch(() => null);
       }
+
+      if ((!hadBanks || latestBanks.length === 0) && getBankId(createdBank)) {
+        storePrimaryBank(createdBank, getBankId(createdBank));
+        setPrimaryBankId(getBankId(createdBank));
+      }
+
+      setBanks(normalizedBanks.length > 0 ? normalizedBanks : [createdBank]);
+      setBankLoading(false);
+      setBankMsg({ text: "Bank verified and added successfully.", type: "success" });
+      setShowBankForm(false);
+      return;
     } else {
       targetBankId =
         targetBankId ||

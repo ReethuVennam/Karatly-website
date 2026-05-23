@@ -51,18 +51,6 @@ const isValidDate = (value) => {
   return Number.isFinite(timestamp);
 };
 
-const pickCreatedAddress = (addresses, expectedAddress) => {
-  const normalizedExpectedAddress = String(expectedAddress || "").trim().toLowerCase();
-  if (!Array.isArray(addresses) || addresses.length === 0) {
-    return null;
-  }
-  return (
-    addresses.find((address) =>
-      String(address?.address || "").trim().toLowerCase() === normalizedExpectedAddress
-    ) || addresses[0]
-  );
-};
-
 const pickMasterItemByName = (items, expectedName) => {
   const normalizedExpectedName = String(expectedName || "").trim().toLowerCase();
   return (
@@ -312,18 +300,18 @@ export default function Signup() {
       augmontAddressResponse = await createAugmontAddress({
         uniqueId: autoUniqueId,
         request: {
-          address: formValues.address.trim()
+          name: formValues.userName.trim(),
+          mobileNumber: formValues.mobileNumber.trim(),
+          email: formValues.emailId.trim(),
+          address: formValues.address.trim(),
+          pincode: formValues.userPincode.trim()
         }
       });
     }
 
     setSubmitting(false);
 
-    const refreshedAddresses = augmontAddressResponse?.addresses || [];
-    const selectedAddress = pickCreatedAddress(
-      refreshedAddresses,
-      formValues.address.trim()
-    );
+    const selectedAddress = augmontAddressResponse?.address || null;
 
     // Clear any stale data from previous user session
     clearAuthSession();
@@ -358,7 +346,7 @@ export default function Signup() {
         landmark: formValues.landmark.trim(),
         userPincode: formValues.userPincode.trim(),
         userAddressId: selectedAddress?.userAddressId || "",
-        addresses: refreshedAddresses,
+        addresses: selectedAddress ? [selectedAddress] : [],
         profileExists: true
       });
     }

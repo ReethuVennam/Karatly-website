@@ -18,7 +18,6 @@ import {
   transbankValidatePan,
   transbankAadhaarGenerateOtp,
   transbankAadhaarSubmitOtp,
-  transbankValidateBankAccount,
 } from "../api/transbankApi";
 
 const panRegex  = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
@@ -269,34 +268,34 @@ function BankSection({ uniqueId, banks, onVerified }) {
     if (!ifscRegex.test(form.ifscCode.trim())) { setError("Enter a valid IFSC (e.g. SBIN0001234)"); return; }
     setLoading(true); setError("");
 
-    const v = await transbankValidateBankAccount({ accountName: form.accountName.trim(), accountNumber: form.accountNumber.trim(), ifscCode: form.ifscCode.trim() });
-    if (!v?.ok || !v?.isValid) { setLoading(false); setError(v?.message || "Bank validation failed."); return; }
-
-    const r = await createAugmontUserBank({ uniqueId, request: { accountNumber: form.accountNumber.trim(), accountName: form.accountName.trim(), ifscCode: form.ifscCode.trim() } });
-    setLoading(false);
-    if (!r?.ok) { setError(r?.message || "Could not add bank."); return; }
-    const createdBankId = getCreatedBankId(r);
-    const isFirstBank = !Array.isArray(banks) || banks.length === 0;
-    if (isFirstBank) {
-      if (createdBankId) {
-        await setPrimaryAugmontUserBank({ uniqueId, userBankId: createdBankId }).catch(() => null);
-        storePrimaryBank(form, createdBankId);
-      } else {
-        const banksRes = await fetchAugmontUserBanks(uniqueId);
-        const latestBanks = banksRes?.ok && Array.isArray(banksRes.banks) ? banksRes.banks : [];
-        const matchedBank = latestBanks.find(bank =>
-          String(bank?.accountNumber || bank?.account_number || "").replace(/\s/g, "") === form.accountNumber.trim() &&
-          String(bank?.ifscCode || bank?.ifsc_code || "").toUpperCase() === form.ifscCode.trim().toUpperCase()
-        );
-        const matchedBankId = getBankId(matchedBank);
-        if (matchedBankId) {
-          await setPrimaryAugmontUserBank({ uniqueId, userBankId: matchedBankId }).catch(() => null);
-          storePrimaryBank(matchedBank, matchedBankId);
-        }
+    const r = await createAugmontUserBank({
+      uniqueId,
+      request: {
+        accountNumber: form.accountNumber.trim(),
+        accountName: form.accountName.trim(),
+        ifscCode: form.ifscCode.trim(),
+        status: "active"
       }
+    });
+    if (!r?.ok) { setLoading(false); setError(r?.message || "Could not add bank."); return; }
+    const createdBankId = getCreatedBankId(r) || r.bank?.userBankId || "";
+    const banksRes = await fetchAugmontUserBanks(uniqueId);
+    const latestBanks = banksRes?.ok && Array.isArray(banksRes.banks) ? banksRes.banks : [];
+    const normalizedBanks = latestBanks.length > 0
+      ? await ensureSingleBankPrimary(uniqueId, latestBanks)
+      : [];
+    if (latestBanks.length === 0 && createdBankId) {
+      await setPrimaryAugmontUserBank({ uniqueId, userBankId: createdBankId }).catch(() => null);
+      storePrimaryBank(r.bank || form, createdBankId);
     }
+    setLoading(false);
     toast.success("Bank verified and added");
-    onVerified();
+    onVerified({
+      ...form,
+      ...(r.bank || {}),
+      userBankId: createdBankId,
+      status: r.bank?.status || "active"
+    }, normalizedBanks);
   };
 
   return (
@@ -413,15 +412,10 @@ export default function KYCPage() {
         </KycSection>
 
         <KycSection icon={<Building2 size={18} />} title="Bank Account" subtitle="Required for gold sell payouts" status={bankVerified ? "verified" : "pending"} defaultOpen={!bankVerified && kycApproved && aadhaarVerified}>
-          <BankSection uniqueId={uniqueId} banks={banks} onVerified={() => {
-            validateToken().catch(() => {});
-            fetchAugmontUserBanks(uniqueId).then(async r => {
-              if (r?.ok) {
-                const normalizedBanks = await ensureSingleBankPrimary(uniqueId, r.banks || []);
-                setBanks(normalizedBanks);
-                setBankVerified(normalizedBanks.length > 0);
-              }
-            });
+          <BankSection uniqueId={uniqueId} banks={banks} onVerified={(createdBank, latestBanks = []) => {
+            const nextBank = createdBank || {};
+            setBanks(latestBanks.length > 0 ? latestBanks : [nextBank]);
+            setBankVerified(true);
           }} />
         </KycSection>
 
