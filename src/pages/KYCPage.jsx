@@ -1,9 +1,19 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  CheckCircle2, AlertCircle, Loader2,
-  CreditCard, Building2, User, ChevronDown, ChevronUp
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+  CreditCard,
+  Building2,
+  User,
+  ChevronDown,
+  ChevronUp,
+  Camera,
+  Smartphone,
+  ShieldCheck
 } from "lucide-react";
+import AppSubpageLayout, { AppPageBack } from "../components/AppSubpageLayout";
 import toast from "react-hot-toast";
 import { getUserProfile, validateToken } from "../api/authApi";
 import {
@@ -349,6 +359,7 @@ export default function KYCPage() {
   const [aadhaarVerified, setAadhaarVerified] = useState(false);
   const [banks,           setBanks]           = useState([]);
   const [bankVerified,    setBankVerified]    = useState(false);
+  const [openForm,        setOpenForm]        = useState(null);
 
   useEffect(() => {
     if (!uniqueId) { setLoading(false); return; }
@@ -372,58 +383,199 @@ export default function KYCPage() {
   }, [uniqueId]);
 
   const allDone = kycApproved && aadhaarVerified && bankVerified;
+  const profile = getUserProfile() || {};
+  const maskedPan = panNumber
+    ? `${panNumber.slice(0, 4)}****${panNumber.slice(-2)}`
+    : "Not submitted";
 
-  if (loading) return (
-    <div className="flex min-h-screen items-center justify-center bg-[#0B0E11]">
-      <Loader2 className="h-8 w-8 animate-spin text-yellow-400" />
-    </div>
-  );
+  const checklist = [
+    {
+      icon: User,
+      title: "Personal Details",
+      sub: "Name, DOB, Address",
+      done: Boolean(profile.fullName || profile.userName)
+    },
+    {
+      icon: CreditCard,
+      title: "PAN Card",
+      sub: kycApproved ? maskedPan : "Submit PAN for verification",
+      done: kycApproved,
+      openKey: "pan"
+    },
+    {
+      icon: Smartphone,
+      title: "Aadhaar e-KYC",
+      sub: aadhaarVerified ? "OTP Verified" : "Verify via Aadhaar OTP",
+      done: aadhaarVerified,
+      openKey: "aadhaar"
+    },
+    {
+      icon: Building2,
+      title: "Bank Details",
+      sub: bankVerified ? `${banks.length} account linked` : "Add bank for payouts",
+      done: bankVerified,
+      openKey: "bank"
+    }
+  ];
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-black">
+        <Loader2 className="h-8 w-8 animate-spin text-yellow-400" />
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-[#0B0E11] text-white">
-      <div className="flex items-center justify-between border-b border-white/10 px-6 py-4">
-        <button onClick={() => navigate(-1)} className="font-medium text-yellow-400 hover:text-yellow-300 transition">← Back</button>
-        <h1 className="text-base font-semibold">KYC Verification</h1>
-        <div />
-      </div>
+    <AppSubpageLayout className="max-w-3xl">
+      <AppPageBack title="KYC Verification" />
 
-      <div className="mx-auto max-w-xl px-4 py-6 space-y-4">
-
-        {allDone ? (
-          <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 flex items-center gap-3">
-            <CheckCircle2 className="h-6 w-6 text-emerald-400 shrink-0" />
-            <div>
-              <p className="text-sm font-semibold text-emerald-300">All KYC steps completed</p>
-              <p className="text-xs text-white/40 mt-0.5">Your account is fully verified</p>
+      <section className="karatly-kyc-status-card rounded-2xl p-6 text-center sm:p-8">
+        <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-yellow-400/15 text-yellow-400">
+          <ShieldCheck className="h-8 w-8" />
+        </div>
+        <p className="mt-4 text-xs text-white/45">
+          Your account meets all SEBI and RBI compliance requirements.
+        </p>
+        <div className="mt-6 grid grid-cols-3 gap-4 border-t border-white/10 pt-6">
+          {[
+            ["Tier II", "Level"],
+            ["₹10L", "Limit"],
+            ["2026", "Valid"]
+          ].map(([value, label]) => (
+            <div key={label}>
+              <p className="text-xl font-bold text-yellow-400 sm:text-2xl">{value}</p>
+              <p className="mt-1 text-xs text-white/45">{label}</p>
             </div>
-          </div>
-        ) : (
-          <div className="rounded-2xl border border-yellow-400/15 bg-yellow-400/5 p-4 text-sm text-yellow-200/70">
-            Complete the steps below in any order. Each step is independent — tap to expand.
-          </div>
-        )}
+          ))}
+        </div>
+      </section>
 
-        <KycSection icon={<CreditCard size={18} />} title="PAN Verification" subtitle="Validate your PAN for KYC compliance" status={kycApproved ? "verified" : "pending"} defaultOpen={!kycApproved}>
-          <PanSection uniqueId={uniqueId} kycApproved={kycApproved} panNumber={panNumber} onVerified={() => { setKycApproved(true); validateToken().catch(() => {}); }} />
-        </KycSection>
+      <section className="mt-10">
+        <h2 className="mb-4 text-xs font-bold tracking-[0.2em] text-white/80">VERIFICATION CHECKLIST</h2>
+        <div className="space-y-3">
+          {checklist.map((row) => {
+            const Icon = row.icon;
+            return (
+              <button
+                key={row.title}
+                type="button"
+                onClick={() => {
+                  if (row.done && row.title === "Bank Details") {
+                    navigate("/bank");
+                    return;
+                  }
+                  if (row.openKey && !row.done) {
+                    setOpenForm((current) => (current === row.openKey ? null : row.openKey));
+                  }
+                }}
+                className="karatly-kyc-check-row flex w-full items-center justify-between rounded-xl px-5 py-4 text-left transition hover:bg-white/[0.03]"
+              >
+                <span className="flex items-center gap-4">
+                  <span className="grid h-10 w-10 place-items-center rounded-full bg-white/8 text-yellow-300">
+                    <Icon className="h-4 w-4" />
+                  </span>
+                  <span>
+                    <span className="block text-sm font-semibold">{row.title}</span>
+                    <span className="text-xs text-white/45">{row.sub}</span>
+                  </span>
+                </span>
+                {row.done ? (
+                  <span className="grid h-8 w-8 place-items-center rounded-full bg-emerald-500/20 text-emerald-400">
+                    <CheckCircle2 className="h-5 w-5" />
+                  </span>
+                ) : (
+                  <ChevronDown className="h-4 w-4 text-white/35" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </section>
 
-        <KycSection icon={<User size={18} />} title="Aadhaar Verification" subtitle="Verify via OTP sent to Aadhaar-linked mobile" status={aadhaarVerified ? "verified" : "pending"} defaultOpen={!aadhaarVerified && kycApproved}>
-          <AadhaarSection uniqueId={uniqueId} verified={aadhaarVerified} onVerified={() => { setAadhaarVerified(true); validateToken().catch(() => {}); }} />
-        </KycSection>
+      {!allDone ? (
+        <p className="mt-6 text-center text-xs text-white/40">
+          Tap a step below to complete verification
+        </p>
+      ) : null}
 
-        <KycSection icon={<Building2 size={18} />} title="Bank Account" subtitle="Required for gold sell payouts" status={bankVerified ? "verified" : "pending"} defaultOpen={!bankVerified && kycApproved && aadhaarVerified}>
-          <BankSection uniqueId={uniqueId} banks={banks} onVerified={(createdBank, latestBanks = []) => {
-            const nextBank = createdBank || {};
-            setBanks(latestBanks.length > 0 ? latestBanks : [nextBank]);
-            setBankVerified(true);
-          }} />
-        </KycSection>
+      <div className="mt-6 space-y-4">
+        {openForm === "pan" && !kycApproved ? (
+          <KycSection
+            icon={<CreditCard size={18} />}
+            title="PAN Verification"
+            subtitle="Validate your PAN for KYC compliance"
+            status="pending"
+            defaultOpen
+          >
+            <PanSection
+              uniqueId={uniqueId}
+              kycApproved={kycApproved}
+              panNumber={panNumber}
+              onVerified={() => {
+                setKycApproved(true);
+                validateToken().catch(() => {});
+              }}
+            />
+          </KycSection>
+        ) : null}
 
-        <button onClick={() => navigate("/dashboard")} className="w-full rounded-xl border border-white/10 bg-white/5 py-3 text-sm text-white/50 hover:text-white transition">
-          {allDone ? "Go to Dashboard →" : "Complete later — Go to Dashboard"}
-        </button>
+        {openForm === "aadhaar" && !aadhaarVerified ? (
+          <KycSection
+            icon={<Camera size={18} />}
+            title="Aadhaar Verification"
+            subtitle="Verify via OTP sent to Aadhaar-linked mobile"
+            status="pending"
+            defaultOpen
+          >
+            <AadhaarSection
+              uniqueId={uniqueId}
+              verified={aadhaarVerified}
+              onVerified={() => {
+                setAadhaarVerified(true);
+                validateToken().catch(() => {});
+              }}
+            />
+          </KycSection>
+        ) : null}
 
+        {openForm === "bank" && !bankVerified ? (
+          <KycSection
+            icon={<Building2 size={18} />}
+            title="Bank Account"
+            subtitle="Required for gold sell payouts"
+            status="pending"
+            defaultOpen
+          >
+            <BankSection
+              uniqueId={uniqueId}
+              banks={banks}
+              onVerified={(createdBank, latestBanks = []) => {
+                const nextBank = createdBank || {};
+                setBanks(latestBanks.length > 0 ? latestBanks : [nextBank]);
+                setBankVerified(true);
+              }}
+            />
+          </KycSection>
+        ) : null}
       </div>
-    </div>
+
+      <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+        <button
+          type="button"
+          onClick={() => navigate("/bank")}
+          className="flex-1 rounded-xl border border-white/10 bg-white/5 py-3 text-sm font-medium text-white/70 hover:text-white"
+        >
+          Payment Methods
+        </button>
+        <button
+          type="button"
+          onClick={() => navigate("/dashboard")}
+          className="flex-1 rounded-xl bg-yellow-400 py-3 text-sm font-bold text-black hover:bg-yellow-300"
+        >
+          {allDone ? "Go to Dashboard" : "Complete later"}
+        </button>
+      </div>
+    </AppSubpageLayout>
   );
 }

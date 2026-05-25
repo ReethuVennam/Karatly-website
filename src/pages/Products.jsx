@@ -773,19 +773,69 @@ export default function Products() {
   })();
 
   return (
-    <div className="bg-black text-white">
+    <div className="karatly-shell min-h-screen text-white">
       <Navbar />
 
       <main className="pt-20">
-        <section className="px-6 py-28 lg:px-20">
-          <div className="mx-auto max-w-7xl">
-            <h2 className="mb-4 text-center text-4xl font-bold">
-              Gold Products
-            </h2>
+        <section className="px-5 py-10 lg:px-20">
+          <div className="mx-auto max-w-6xl">
+            <div className="karatly-panel mb-7 rounded-lg p-5">
+              <div className="flex items-start justify-between gap-5">
+                <div>
+                  <p className="text-xs text-white/50">Spot Rate Gold</p>
+                  <h2 className="mt-2 text-3xl font-bold text-yellow-300">&#8377;15,792 /g</h2>
+                  <p className="mt-2 text-sm text-emerald-400">+1.34% today</p>
+                </div>
+                <div className="rounded-full bg-black/35 p-1 text-xs">
+                  <span className="rounded-full bg-yellow-400 px-6 py-2 text-black">Gold</span>
+                  <span className="px-6 py-2 text-white/55">Silver</span>
+                </div>
+              </div>
+              <div className="mt-6 flex justify-around text-xs text-white/45">
+                {["1D", "1W", "1M", "3M", "1Y"].map((item) => <span key={item}>{item}</span>)}
+              </div>
+              <div className="relative mt-5 h-56 rounded-lg bg-black/10 px-4 pb-5 pt-3">
+                <svg viewBox="0 0 900 210" className="absolute inset-0 h-full w-full px-4 pb-5 pt-3" aria-hidden="true">
+                  <defs>
+                    <linearGradient id="marketGoldBars" x1="0" x2="0" y1="0" y2="1">
+                      <stop offset="0%" stopColor="#f4b82d" />
+                      <stop offset="100%" stopColor="#5a4112" />
+                    </linearGradient>
+                  </defs>
+                  {[125, 145, 112, 158, 134, 150, 121, 142, 110, 138].map((y, index) => (
+                    <rect
+                      key={index}
+                      x={60 + index * 82}
+                      y={y}
+                      width="30"
+                      height={185 - y}
+                      rx="7"
+                      fill="url(#marketGoldBars)"
+                    />
+                  ))}
+                  <polyline
+                    points="60,126 142,140 224,108 306,150 388,134 470,118 552,137 634,130 716,154 798,136"
+                    fill="none"
+                    stroke="#31d7ff"
+                    strokeWidth="3"
+                  />
+                  <line x1="634" y1="58" x2="634" y2="185" stroke="#ffd54a" strokeDasharray="5 6" opacity="0.75" />
+                </svg>
+                <span className="absolute bottom-20 right-[23%] rounded-full bg-[#3a3325] px-3 py-1 text-[10px] text-yellow-300">15,792</span>
+              </div>
+              <div className="mt-5 flex gap-5 text-xs text-white/60">
+                <span><span className="mr-2 inline-block h-2 w-2 rounded-full bg-yellow-400" />Buy</span>
+                <span><span className="mr-2 inline-block h-2 w-2 rounded-full bg-cyan-400" />Sell</span>
+              </div>
+            </div>
 
-            <p className="mx-auto mb-10 max-w-2xl text-center text-white/60">
-              Explore our live gold product catalog in one unified product feed.
-            </p>
+            <input
+              type="search"
+              placeholder="Search assets, coins, jewellery"
+              className="karatly-input mb-9 h-11 px-4 text-sm"
+            />
+
+            <h2 className="mb-4 text-xl font-bold">Top Movers</h2>
 
             {augmontLoading && unifiedProducts.length === 0 && (
               <div className="rounded-2xl border border-white/10 bg-[#111] p-8 text-center text-gray-400">
@@ -805,20 +855,41 @@ export default function Products() {
 
             {!initialLoading && unifiedProducts.length > 0 && (
               <>
-                <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-white/10 bg-[#111] p-4 text-sm text-gray-300 sm:flex-row sm:items-center sm:justify-between">
+                <div className="mb-6 hidden flex-col gap-3 rounded-2xl border border-white/10 bg-[#111] p-4 text-sm text-gray-300 sm:flex-row sm:items-center sm:justify-between">
                   <p>Showing {unifiedProducts.length} products</p>
                   <p>Augmont: {augmontProducts.length}</p>
                 </div>
 
-                <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
+                <div className="space-y-4">
                   {unifiedProducts.map((item) => (
-                    <ProductCard
+                    <div key={`market-${item.id}`} className="karatly-card flex items-center justify-between rounded-lg p-4">
+                      <div className="flex items-center gap-4">
+                        <div className="grid h-12 w-12 place-items-center rounded-full bg-yellow-500 text-black font-bold">G</div>
+                        <div>
+                          <p className="font-semibold">{item.product?.name || "Gold 24K"}</p>
+                          <p className="text-xs text-white/45">{item.product?.metalType || "Au"} - per gram</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleBuyProduct(item.product)}
+                        className="text-right"
+                      >
+                        <p className="font-semibold">&#8377;{formatPrice(item.product?.price || 15792)}</p>
+                        <p className="text-xs text-emerald-400">+1.34%</p>
+                      </button>
+                    </div>
+                  ))}
+                  <div className="hidden">
+                    {unifiedProducts.map((item) => (
+                      <ProductCard
                       key={`augmont-${item.id}`}
                       product={item.product}
                       onClick={handleProductClick}
                       onBuy={handleBuyProduct}
-                    />
-                  ))}
+                      />
+                    ))}
+                  </div>
                 </div>
 
                 {augmontPagination?.hasMore && (

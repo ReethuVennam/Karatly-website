@@ -12,6 +12,9 @@ import OrdersPage from "./pages/OrdersPage";
 import SettingsPage from "./pages/SettingsPage";
 import HelpPage from "./pages/HelpPage";
 import KYCPage from "./pages/KYCPage";
+import NotificationsPage from "./pages/NotificationsPage";
+import BankPage from "./pages/BankPage";
+import HomePage from "./pages/HomePage";
 
 // DASHBOARD
 import Dashboard from "./pages/Dashboard";
@@ -19,14 +22,6 @@ import Portfolio from "./dashboard/Portfolio";
 import LearnMore from "./pages/LearnMore";
 
 // MAIN COMPONENTS
-import Navbar from "./components/Navbar";
-import Hero from "./components/Hero";
-import TrustSecurity from "./components/TrustSecurity";
-import GoldPriceWidget from "./components/GoldPriceWidget";
-import MobileApp from "./components/MobileApp";
-import Testimonials from "./components/Testimonials";
-import Footer from "./components/Footer";
-import CTA from "./components/CTA";
 
 // 🔥 IMPORTANT: ADD THESE IMPORTS
 import FeaturesPage from "./pages/Featurespage";
@@ -53,20 +48,6 @@ import GoldPlatformPage from "./pages/GoldPlatformPage";
 // DEMO
 import DemoBadge from "./components/DemoBadge";
 
-function HomePage() {
-  return (
-    <div className="bg-black text-white">
-      <Navbar />
-      <Hero />
-      <div className="py-6"><TrustSecurity /></div>
-      <div className="py-6"><GoldPriceWidget /></div>
-      <div className="py-6"><Testimonials /></div>
-      <div className="py-10"><CTA /></div>
-      <Footer />
-    </div>
-  );
-}
-
 function App() {
   // Refresh KYC status, profilePhoto, augmontUniqueId from DB on every app load
   useEffect(() => {
@@ -85,6 +66,8 @@ function App() {
         <Route path="/orders" element={<OrdersPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/help" element={<HelpPage />} />
+        <Route path="/notifications" element={<NotificationsPage />} />
+        <Route path="/bank" element={<BankPage />} />
         <Route path="/gold-platform" element={<GoldPlatformPage />} />
         <Route path="/kyc" element={<KYCPage />} />
 

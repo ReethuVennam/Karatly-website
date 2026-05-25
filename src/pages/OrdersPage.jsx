@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Copy, Check } from "lucide-react";
+import { Copy, Check, RefreshCw } from "lucide-react";
 import toast from "react-hot-toast";
 import Navbar from "../components/Navbar";
 import { getUserProfile } from "../api/authApi";
@@ -45,6 +45,7 @@ const prettyJson = (value) => JSON.stringify(value || {}, null, 2);
 const getEmptyStateMessage = (filter) => {
   if (filter === "SELL") return "No sell orders found.";
   if (filter === "BUY") return "No buy orders found.";
+  if (filter === "SIP") return "No SIP orders found.";
   return "No Augmont orders found.";
 };
 
@@ -151,7 +152,7 @@ export default function OrdersPage() {
     () =>
       filter === "ALL"
         ? orders
-        : orders.filter((order) => order.type === filter),
+        : orders.filter((order) => String(order.type || "").toUpperCase() === filter),
     [filter, orders]
   );
 
@@ -209,42 +210,45 @@ export default function OrdersPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="karatly-shell min-h-screen text-white">
       <Navbar />
 
-      <div className="mx-auto max-w-6xl px-6 pt-28">
-        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">My Orders</h1>
-            <p className="mt-2 text-sm text-white/55">
-              Augmont buy and sell history loaded through backend wrapper list APIs.
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-xs text-white/55">
-            <p>Merchant ID: {merchantId || "NA"}</p>
-            <p className="mt-1">Unique ID: {uniqueId || "NA"}</p>
+      <div className="mx-auto max-w-6xl px-5 pb-12 pt-24">
+        <div className="karatly-panel mb-7 rounded-lg p-5">
+          <p className="text-xs uppercase tracking-[0.22em] text-white/55">This Month</p>
+          <h1 className="mt-2 text-3xl font-bold text-yellow-300">&#8377;61,444</h1>
+          <p className="mt-2 text-sm text-white/65">Total invested - {orders.length || 6} orders</p>
+          <div className="mt-6 grid gap-4 md:grid-cols-3">
+            {[
+              ["24", "BUY"],
+              ["16", "SELL"],
+              ["3", "SIP"]
+            ].map(([count, label]) => (
+              <div key={label} className="rounded-md border border-yellow-500/25 bg-[#17120d] p-4 text-center">
+                <p className="text-3xl font-bold text-yellow-400">{count}</p>
+                <p className="mt-2 text-xs uppercase">{label}</p>
+              </div>
+            ))}
           </div>
         </div>
 
-        <div className="mb-6 flex flex-wrap items-center gap-4">
-          {["ALL", "BUY", "SELL"].map((item) => (
+        <div className="mb-6 grid grid-cols-4 overflow-hidden rounded-xl border border-white/15 bg-[#17140f] text-sm">
+          {["ALL", "BUY", "SELL", "SIP"].map((item) => (
             <button
               key={item}
               onClick={() => setFilter(item)}
-              className={`rounded-full border px-5 py-2 ${
+              className={`py-3 transition ${
                 filter === item
-                  ? "bg-yellow-400 text-black"
-                  : "border-white/20 text-white"
+                  ? "bg-gradient-to-r from-yellow-300 to-amber-500 text-black"
+                  : "text-white/55 hover:text-white"
               }`}
             >
-              {item}
+              {item === "ALL" ? "All" : item.charAt(0) + item.slice(1).toLowerCase()}
             </button>
           ))}
-
           <button
             onClick={loadOrders}
-            className="rounded-full border border-white/20 px-5 py-2 text-white transition hover:border-yellow-400 hover:text-yellow-300"
+            className="hidden"
           >
             Refresh Orders
           </button>
@@ -269,7 +273,7 @@ export default function OrdersPage() {
             {getEmptyStateMessage(filter)}
           </div>
         ) : (
-          <div className="overflow-hidden rounded-xl border border-white/10 bg-white/5">
+          <div className="overflow-hidden rounded-lg border border-white/10 bg-transparent">
             {/* TC23 & TC59: Added Transaction ID column header, widened grid */}
             <div className="hidden grid-cols-[1fr_0.5fr_0.7fr_0.7fr_1fr_0.8fr_1.2fr_1.1fr] gap-3 bg-white/10 px-4 py-4 text-left text-xs font-semibold uppercase tracking-widest text-white/50 md:grid">
               <div>Merchant Txn ID</div>
@@ -289,8 +293,8 @@ export default function OrdersPage() {
                 const isActive = selectedOrderId === orderKey;
 
                 return (
-                  <div key={orderKey} className="px-4 py-5 hover:bg-white/5">
-                    <div className="grid gap-3 md:grid-cols-[1fr_0.5fr_0.7fr_0.7fr_1fr_0.8fr_1.2fr_1.1fr] md:items-start">
+                  <div key={orderKey} className="karatly-card mb-3 rounded-lg px-4 py-4">
+                    <div className="grid gap-3 md:grid-cols-[1fr_0.45fr_0.7fr_0.7fr_1fr_0.8fr_1.1fr_1fr] md:items-start">
 
                       {/* Merchant Transaction ID */}
                       <div>
@@ -303,7 +307,7 @@ export default function OrdersPage() {
                       {/* Type */}
                       <div>
                         <p className="mb-1 text-xs text-white/45 md:hidden">Type</p>
-                        <p className={order.type === "BUY" ? "text-green-400 font-semibold" : "text-red-400 font-semibold"}>
+                        <p className={order.type === "BUY" ? "font-semibold text-yellow-300" : "font-semibold text-cyan-300"}>
                           {order.type}
                         </p>
                       </div>
@@ -395,6 +399,14 @@ export default function OrdersPage() {
           </div>
         )}
       </div>
+      <button
+        type="button"
+        onClick={loadOrders}
+        className="fixed bottom-5 right-5 grid h-11 w-11 place-items-center rounded-full bg-yellow-400 text-black shadow-lg"
+        title="Refresh orders"
+      >
+        <RefreshCw className="h-5 w-5" />
+      </button>
     </div>
   );
 }

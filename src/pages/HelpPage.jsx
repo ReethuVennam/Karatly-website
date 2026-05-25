@@ -1,94 +1,90 @@
-import Navbar from "../components/Navbar";
 import { useState } from "react";
+import {
+  ChevronRight,
+  HelpCircle,
+  Mail,
+  MessageCircle,
+  Phone,
+  Search
+} from "lucide-react";
+import AppSubpageLayout, { AppPageBack } from "../components/AppSubpageLayout";
 
-export default function HelpSupport() {
-  const [open, setOpen] = useState(null);
+const SUPPORT_CHANNELS = [
+  { icon: MessageCircle, title: "Live Chat", sub: "Avg 2 min" },
+  { icon: Phone, title: "Call Us", sub: "1800-123-4567" },
+  { icon: Mail, title: "Email", sub: "help@karatly.in" }
+];
 
-  const faqs = [
-    {
-      q: "How do I buy gold?",
-      a: "Go to dashboard → enter amount → click buy. Gold is instantly added."
-    },
-    {
-      q: "Is my gold safe?",
-      a: "Yes, your gold is stored in insured vaults with 100% security."
-    },
-    {
-      q: "How do I sell gold?",
-      a: "You can sell anytime and money is credited instantly."
-    },
-  ];
+const TOPICS = [
+  "How is gold price calculated?",
+  "When does SIP debit happen?",
+  "How to redeem physical gold",
+  "What are storage fee?",
+  "How do i withdraw funds?"
+];
+
+export default function HelpPage() {
+  const [query, setQuery] = useState("");
+
+  const filteredTopics = TOPICS.filter((topic) =>
+    topic.toLowerCase().includes(query.trim().toLowerCase())
+  );
 
   return (
-    <div className="bg-black text-white min-h-screen">
-      <Navbar />
+    <AppSubpageLayout>
+      <AppPageBack title="Help Center" />
 
-      <div className="pt-28 px-6 max-w-5xl mx-auto">
-
-        <h1 className="text-3xl font-bold mb-8">Help & Support</h1>
-
-        {/* CONTACT CARDS */}
-        <div className="grid md:grid-cols-3 gap-6 mb-10">
-
-          <div className="bg-white/5 p-6 rounded-xl border border-white/10">
-            <h3 className="font-semibold mb-2">Email Support</h3>
-            <p className="text-white/70">support@sabpegold.com</p>
-          </div>
-
-          <div className="bg-white/5 p-6 rounded-xl border border-white/10">
-            <h3 className="font-semibold mb-2">Call Us</h3>
-            <p className="text-white/70">+91 98765 43210</p>
-          </div>
-
-          <div className="bg-white/5 p-6 rounded-xl border border-white/10">
-            <h3 className="font-semibold mb-2">Live Chat</h3>
-            <p className="text-white/70">Available 24/7</p>
-          </div>
-
+      <section className="karatly-subpage-hero rounded-2xl p-6 text-center sm:p-8">
+        <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-yellow-400/15 text-yellow-400">
+          <HelpCircle className="h-6 w-6" />
         </div>
+        <h1 className="mt-4 text-2xl font-bold sm:text-3xl">How can we help?</h1>
+        <div className="relative mx-auto mt-5 max-w-xl">
+          <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" />
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search articles..."
+            className="karatly-input w-full rounded-full py-3 pl-11 pr-4 text-sm"
+          />
+        </div>
+      </section>
 
-        {/* FAQ */}
-        <h2 className="text-xl font-semibold mb-4">FAQs</h2>
-
-        <div className="space-y-4">
-          {faqs.map((item, i) => (
-            <div
-              key={i}
-              className="border border-white/10 rounded-lg p-4 cursor-pointer"
-              onClick={() => setOpen(open === i ? null : i)}
+      <section className="mt-10">
+        <h2 className="mb-4 text-xs font-bold tracking-[0.2em] text-white/80">GET IN TOUCH</h2>
+        <div className="grid gap-4 sm:grid-cols-3">
+          {SUPPORT_CHANNELS.map(({ icon: Icon, title, sub }) => (
+            <button
+              key={title}
+              type="button"
+              className="karatly-subpage-panel rounded-2xl p-5 text-left transition hover:bg-white/[0.03]"
             >
-              <div className="flex justify-between">
-                <p>{item.q}</p>
-                <span>{open === i ? "-" : "+"}</span>
+              <div className="grid h-11 w-11 place-items-center rounded-full bg-yellow-400/15 text-yellow-400">
+                <Icon className="h-5 w-5" />
               </div>
-
-              {open === i && (
-                <p className="text-white/70 mt-3">{item.a}</p>
-              )}
-            </div>
+              <p className="mt-4 text-sm font-semibold">{title}</p>
+              <p className="mt-1 text-xs text-white/45">{sub}</p>
+            </button>
           ))}
         </div>
+      </section>
 
-        {/* CONTACT FORM */}
-        <div className="mt-12 bg-white/5 p-6 rounded-xl border border-white/10">
-          <h3 className="text-lg font-semibold mb-4">Raise a Ticket</h3>
-
-          <input
-            placeholder="Your Email"
-            className="w-full mb-4 p-3 bg-black border border-white/20 rounded"
-          />
-
-          <textarea
-            placeholder="Describe your issue"
-            className="w-full mb-4 p-3 bg-black border border-white/20 rounded"
-          />
-
-          <button className="bg-yellow-400 text-black px-6 py-3 rounded font-semibold">
-            Submit Request
-          </button>
+      <section className="mt-10">
+        <h2 className="mb-4 text-xs font-bold tracking-[0.2em] text-white/80">POPULAR TOPICS</h2>
+        <div className="karatly-subpage-panel overflow-hidden rounded-2xl">
+          {(filteredTopics.length ? filteredTopics : TOPICS).map((topic) => (
+            <button
+              key={topic}
+              type="button"
+              className="flex w-full items-center justify-between border-b border-white/8 px-5 py-4 text-left text-sm last:border-b-0 hover:bg-white/[0.03]"
+            >
+              <span>{topic}</span>
+              <ChevronRight className="h-4 w-4 shrink-0 text-white/35" />
+            </button>
+          ))}
         </div>
-
-      </div>
-    </div>
+      </section>
+    </AppSubpageLayout>
   );
 }

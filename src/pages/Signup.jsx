@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { CheckCircle2, ShieldCheck } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Crown, ShieldCheck } from "lucide-react";
 import toast from "react-hot-toast";
 import RegistrationForm from "../components/RegistrationForm";
 import { sendOtp, setUserProfile, verifyOtp, clearAuthSession } from "../api/authApi";
@@ -127,7 +127,6 @@ export default function Signup() {
   const [alreadyRegistered, setAlreadyRegistered] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [signupWarning, setSignupWarning] = useState("");
-  const goldCoins = useMemo(() => Array.from({ length: 8 }), []);
 
   const handleChange = (name, value) => {
     const nextValue = sanitizeValue(name, value);
@@ -378,76 +377,38 @@ export default function Signup() {
   const handleSubmit = otpSent ? handleVerifyAndCreate : handleSendOtp;
 
   return (
-    <div
-      className="min-h-screen text-white"
-      style={{
-        background:
-          "radial-gradient(circle at top right, rgba(250,204,21,0.18), transparent 28%), linear-gradient(135deg, #1f1602 0%, #050505 48%, #140f02 100%)"
-      }}
-    >
-      <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-6 md:px-8 md:py-10">
-        <div className="grid flex-1 gap-8 overflow-hidden rounded-[2rem] border border-yellow-400/10 bg-black/40 shadow-[0_25px_80px_rgba(0,0,0,0.45)] backdrop-blur md:grid-cols-[0.95fr_1.05fr]">
-          <div className="relative overflow-hidden px-6 py-10 md:px-10 md:py-14">
-            <style>{`
-              @keyframes fallCoin3D {
-                0% { top: -40px; opacity: 0.7; transform: scale(1) rotate(0deg); }
-                40% { opacity: 1; transform: scale(1.1) rotate(20deg); }
-                70% { opacity: 1; transform: scale(1) rotate(-10deg); }
-                100% { top: 90%; opacity: 0.2; transform: scale(0.9) rotate(0deg); }
-              }
-              .animate-fallCoin3D {
-                animation: fallCoin3D 2.8s linear infinite;
-              }
-            `}</style>
+    <div className="karatly-shell min-h-screen text-white">
+      <button
+        type="button"
+        onClick={() => navigate(-1)}
+        className="fixed left-6 top-7 z-10 inline-flex items-center gap-2 text-sm text-white/75 hover:text-white sm:left-20"
+      >
+        <ArrowLeft className="h-5 w-5 rounded-full border border-white/60 p-0.5" />
+        Back
+      </button>
 
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(250,204,21,0.16),transparent_32%),radial-gradient(circle_at_80%_50%,rgba(251,191,36,0.12),transparent_28%)]" />
-
-            {goldCoins.map((_, index) => (
-              <div
-                key={index}
-                className="absolute animate-fallCoin3D"
-                style={{
-                  left: `${8 + index * 10}%`,
-                  top: `-${30 + index * 10}px`,
-                  animationDelay: `${index * 0.45}s`,
-                  width: "44px",
-                  height: "44px",
-                  zIndex: 1
-                }}
-              >
-                <svg width="44" height="44" viewBox="0 0 44 44">
-                  <ellipse cx="22" cy="22" rx="20" ry="16" fill="#FFD54A" stroke="#FACC15" strokeWidth="2" />
-                  <text x="22" y="27" textAnchor="middle" fontSize="15" fill="#5b4100" fontWeight="bold">
-                    G
-                  </text>
-                </svg>
-              </div>
-            ))}
-
-            <div className="relative z-10 flex h-full flex-col justify-between">
-              <div className="space-y-6">
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-yellow-300 to-amber-500 text-black shadow-[0_12px_30px_rgba(251,191,36,0.25)]">
-                  <ShieldCheck className="h-6 w-6" />
-                </div>
-
-                <div className="space-y-4">
-                  <p className="text-sm font-semibold uppercase tracking-[0.24em] text-yellow-300/80">
-                    Common Gold Registration
-                  </p>
-                  <h1 className="max-w-md text-4xl font-bold leading-tight text-white">
-                    One shared onboarding flow for every gold user.
-                  </h1>
-                  <p className="max-w-lg text-sm leading-7 text-yellow-100/80 md:text-base">
-                    Create your account once and continue seamlessly into the gold
-                    experience with your details already in place.
-                  </p>
-                </div>
-              </div>
-            </div>
+      <main className="mx-auto flex min-h-screen w-full max-w-[690px] flex-col items-center justify-center px-6 py-20 text-center">
+        <div className="mb-5 flex h-24 w-24 items-center justify-center rounded-full bg-[#50360b]">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#ffd45a] text-black">
+            <Crown className="h-10 w-10 fill-black" />
           </div>
+        </div>
 
-          <div className="flex items-center justify-center px-5 py-8 md:px-8 md:py-12">
-            <div className="w-full max-w-3xl rounded-[2rem] border border-yellow-300/10 bg-black/60 p-6 shadow-2xl md:p-8">
+        <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-yellow-500/30 bg-black/35 px-4 py-1.5 text-[10px] uppercase tracking-[0.12em] text-white/80">
+          <ShieldCheck className="h-3 w-3 text-yellow-300" />
+          Become a member
+        </div>
+
+        <p className="text-[12px] uppercase tracking-[0.48em] text-white/55">Open your golden account</p>
+        <h1 className="mt-4 font-serif text-4xl font-bold leading-tight sm:text-5xl">
+          Start Your <span className="italic text-[#e5a71e]">Golden</span> Story
+        </h1>
+        <div className="mx-auto mt-2 h-3 w-12 border-b border-yellow-500/70" />
+        <p className="mt-6 max-w-md text-xs leading-5 text-white/75">
+          Set up your Karatly profile to invest, store and grow your wealth in certified precious metals
+        </p>
+
+        <section className="mt-6 w-full">
               {success ? (
                 <div className="flex min-h-[520px] flex-col items-center justify-center text-center">
                   <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-300">
@@ -529,10 +490,8 @@ export default function Signup() {
                   </p>
                 </>
               )}
-            </div>
-          </div>
-        </div>
-      </div>
+        </section>
+      </main>
     </div>
   );
 }

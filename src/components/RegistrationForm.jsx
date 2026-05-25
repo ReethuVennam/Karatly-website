@@ -1,5 +1,5 @@
 const inputBaseClassName =
-  "w-full rounded-xl border border-yellow-700 bg-black/70 px-4 py-3 text-sm text-white outline-none transition focus:border-yellow-400 disabled:cursor-not-allowed disabled:opacity-60";
+  "karatly-input h-10 px-3 text-xs disabled:cursor-not-allowed disabled:opacity-60";
 
 const fieldErrorClassName = "mt-1 text-xs text-rose-300";
 
@@ -11,8 +11,8 @@ function FormField({
   children
 }) {
   return (
-    <label className="block space-y-1" htmlFor={id}>
-      <span className="text-xs font-semibold text-yellow-200">
+    <label className="block" htmlFor={id}>
+      <span className="sr-only">
         {label}
         {required ? " *" : ""}
       </span>
@@ -36,8 +36,8 @@ export default function RegistrationForm({
   const cityNames = Object.keys(locationOptions?.[formValues.stateName]?.cities || {});
 
   return (
-    <form className="mt-8 space-y-5" onSubmit={onSubmit}>
-      <div className="grid gap-5 md:grid-cols-2">
+    <form className="mt-7 space-y-6" onSubmit={onSubmit}>
+      <div className="grid gap-3 md:grid-cols-2">
         <FormField id="userName" label="Full name" error={errors.userName} required>
           <input
             id="userName"
@@ -45,7 +45,7 @@ export default function RegistrationForm({
             value={formValues.userName}
             onChange={(event) => onChange("userName", event.target.value)}
             disabled={otpSent}
-            placeholder="Your full name"
+            placeholder="Full Name *"
             className={inputBaseClassName}
           />
         </FormField>
@@ -59,7 +59,7 @@ export default function RegistrationForm({
             value={formValues.mobileNumber}
             onChange={(event) => onChange("mobileNumber", event.target.value)}
             disabled={otpSent}
-            placeholder="10-digit mobile number"
+            placeholder="Mobile Number*"
             className={inputBaseClassName}
           />
         </FormField>
@@ -71,7 +71,7 @@ export default function RegistrationForm({
             value={formValues.emailId}
             onChange={(event) => onChange("emailId", event.target.value)}
             disabled={otpSent}
-            placeholder="you@example.com"
+            placeholder="Email Address *"
             className={inputBaseClassName}
           />
         </FormField>
@@ -84,7 +84,7 @@ export default function RegistrationForm({
             disabled={otpSent}
             className={inputBaseClassName}
           >
-            <option value="">Select state</option>
+              <option value="">State *</option>
             {stateNames.map((stateName) => (
               <option key={stateName} value={stateName}>
                 {stateName}
@@ -101,7 +101,7 @@ export default function RegistrationForm({
             disabled={otpSent || !formValues.stateName}
             className={inputBaseClassName}
           >
-            <option value="">Select city</option>
+              <option value="">City *</option>
             {cityNames.map((cityName) => (
               <option key={cityName} value={cityName}>
                 {cityName}
@@ -110,21 +110,6 @@ export default function RegistrationForm({
           </select>
         </FormField>
 
-        <div className="md:col-span-2">
-          <FormField id="address" label="Address" error={errors.address} required>
-            <textarea
-              id="address"
-              rows={3}
-              minLength={11}
-              value={formValues.address}
-              onChange={(event) => onChange("address", event.target.value)}
-              disabled={otpSent}
-              placeholder="Enter your address, more than 10 characters"
-              className={inputBaseClassName}
-            />
-          </FormField>
-        </div>
-
         <FormField id="landmark" label="Landmark" error={errors.landmark} required>
           <input
             id="landmark"
@@ -132,7 +117,20 @@ export default function RegistrationForm({
             value={formValues.landmark}
             onChange={(event) => onChange("landmark", event.target.value)}
             disabled={otpSent}
-            placeholder="Nearby landmark"
+            placeholder="Landmark *"
+            className={inputBaseClassName}
+          />
+        </FormField>
+
+        <FormField id="address" label="Address" error={errors.address} required>
+          <input
+            id="address"
+            type="text"
+            minLength={11}
+            value={formValues.address}
+            onChange={(event) => onChange("address", event.target.value)}
+            disabled={otpSent}
+            placeholder="Address *"
             className={inputBaseClassName}
           />
         </FormField>
@@ -146,7 +144,7 @@ export default function RegistrationForm({
             value={formValues.userPincode}
             readOnly
             disabled={otpSent}
-            placeholder="Auto-generated pincode"
+            placeholder="Pincode*"
             className={inputBaseClassName}
           />
         </FormField>
@@ -170,7 +168,7 @@ export default function RegistrationForm({
               inputMode="numeric"
               value={formValues.otp}
               onChange={(event) => onChange("otp", event.target.value)}
-              placeholder="Enter OTP"
+              placeholder="OTP *"
               className={inputBaseClassName}
             />
           </FormField>
@@ -190,7 +188,7 @@ export default function RegistrationForm({
       <button
         type="submit"
         disabled={submitting}
-        className="w-full rounded-xl bg-yellow-400 py-3 text-base font-bold text-black transition hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-70"
+        className="karatly-gold-button h-14 w-full rounded-full text-base font-medium transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-70"
       >
         {submitting
           ? "Please wait..."

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { Bell, Menu, X } from "lucide-react";
 import {
   clearAuthSession,
   getUserProfile,
@@ -12,7 +13,6 @@ function Navbar() {
   const [profileOpen, setProfileOpen] = useState(false);
 
   const navigate = useNavigate();
-
   const loggedIn = isAuthenticated();
   const userProfile = getUserProfile();
   const displayName = userProfile?.fullName || "User";
@@ -20,18 +20,13 @@ function Navbar() {
   const userInitial = displayName.charAt(0).toUpperCase() || "U";
 
   useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 50);
-    };
-
+    const handleScroll = () => setIsScrolled(window.scrollY > 50);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // ✅ Close dropdown on outside click
   useEffect(() => {
     const closeDropdown = () => setProfileOpen(false);
-
     document.addEventListener("click", closeDropdown);
     return () => document.removeEventListener("click", closeDropdown);
   }, []);
@@ -42,235 +37,152 @@ function Navbar() {
     window.location.reload();
   };
 
-  return (
-    <nav
-      className={`fixed top-0 w-full z-50 transition ${
-        isScrolled
-          ? "bg-black/95 backdrop-blur-md border-b border-white/10"
-          : "bg-transparent"
-      }`}
-    >
-      <div className="max-w-7xl mx-auto px-4">
-        <div className="flex items-center justify-between h-20">
+  const navItems = loggedIn
+    ? [
+        ["Home", "/"],
+        ["Dashboard", "/dashboard"],
+        ["Market", "/products"],
+        ["Order", "/orders"]
+      ]
+    : [
+        ["Home", "/"],
+        ["Market", "/products"],
+        ["Login", "/login"]
+      ];
 
-          {/* LOGO */}
-          <Link to="/" className="flex items-center gap-3">
+  return (
+    <nav className={`fixed top-0 z-50 w-full transition ${isScrolled ? "bg-black/90 backdrop-blur" : "bg-transparent"}`}>
+      <div className="mx-auto max-w-7xl px-5 sm:px-8">
+        <div className="flex h-20 items-center justify-between">
+          <Link to={loggedIn ? "/dashboard" : "/"} className="flex items-center gap-2">
             <img
               src="/images/karataly-logo.png"
               alt="Karataly"
-              className="h-14 w-14 rounded-xl bg-white/5 object-cover"
+              className="h-9 w-9 rounded-md object-cover"
             />
-            <div className="text-2xl font-semibold">
-              <span className="text-white">Kara</span>
-              <span className="text-yellow-400">tly</span>
+            <div className="leading-none">
+              <p className="text-sm font-semibold text-white">Karatly</p>
+              <p className="text-[10px] uppercase tracking-[0.12em] text-white/60">Premium Gold</p>
             </div>
           </Link>
 
-          {/* DESKTOP MENU */}
-          <div className="hidden lg:flex items-center space-x-8">
-
-            <Link to="/" className="text-white/80 hover:text-yellow-400">
-              Home
-            </Link>
-
-            <Link to="/products" className="text-white/80 hover:text-yellow-400">
-              Products
-            </Link>
-
-            <Link to="/mobile" className="text-white/80 hover:text-yellow-400">
-              Mobile App
-            </Link>
-
-            <Link to="/features" className="text-white/80 hover:text-yellow-400">
-              Features
-            </Link>
-
-            <Link to="/how-it-works" className="text-white/80 hover:text-yellow-400">
-              How It Works
-            </Link>
-
-            <Link to="/why" className="text-white/80 hover:text-yellow-400">
-              Why Karataly
-            </Link>
-
-            <Link to="/faq" className="text-white/80 hover:text-yellow-400">
-              FAQ
-            </Link>
-
-            {/* AUTH */}
+          <div className="hidden items-center gap-10 lg:flex">
+            {navItems.map(([label, path]) => (
+              <Link
+                key={path}
+                to={path}
+                className="border-b-2 border-transparent pb-1 text-sm text-white transition hover:border-yellow-400 hover:text-yellow-300"
+              >
+                {label}
+              </Link>
+            ))}
             {!loggedIn ? (
-              <>
-                <Link
-                  to="/login"
-                  className="text-white border border-yellow-400 px-5 py-2 rounded-full hover:bg-yellow-400 hover:text-black transition"
-                >
-                  Login
-                </Link>
-
-                <Link
-                  to="/signup"
-                  className="bg-yellow-400 text-black px-6 py-2 rounded-full font-semibold hover:scale-105 transition"
-                >
-                  Start Investing
-                </Link>
-              </>
+              <Link to="/signup" className="rounded-full bg-yellow-400 px-5 py-2 text-sm font-semibold text-black">
+                Start
+              </Link>
             ) : (
-              <div className="flex items-center gap-4">
-
-                {/* Dashboard Button */}
+              <div className="flex items-center gap-3">
                 <Link
-                  to="/dashboard"
-                  className="bg-yellow-400 text-black px-6 py-2 rounded-full font-semibold hover:scale-105 transition"
+                  to="/notifications"
+                  className="relative grid h-11 w-11 place-items-center rounded-full border border-white/15 bg-white/5 text-yellow-400 transition hover:border-yellow-400/40 hover:bg-white/10"
+                  aria-label="Notifications"
                 >
-                  Dashboard
+                  <Bell className="h-5 w-5" />
+                  <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500" />
                 </Link>
-
-                {/* Profile Dropdown */}
                 <div className="relative">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setProfileOpen(!profileOpen);
-                    }}
-                    className="w-10 h-10 bg-yellow-400 text-black font-bold flex items-center justify-center rounded-full"
-                  >
-                    {userInitial}
-                  </button>
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setProfileOpen(!profileOpen);
+                  }}
+                  className="flex h-11 w-11 items-center justify-center rounded-full bg-[#f5a400] text-base font-bold text-black"
+                >
+                  {userInitial}
+                </button>
 
-                  {profileOpen && (
-                    <div className="absolute right-0 mt-3 w-56 bg-black border border-white/10 rounded-xl shadow-lg py-2 z-50">
-
-                      {/* USER INFO */}
-                      <div className="px-4 py-3 border-b border-white/10">
-                        <p className="text-white font-semibold">{displayName}</p>
-                        <p className="text-white/60 text-sm">{displayEmail}</p>
-                      </div>
-
-                      {/* OPTIONS */}
-                      <button
-                        onClick={() => {
-                          navigate("/profile");
-                          setProfileOpen(false);
-                        }}
-                        className="w-full text-left px-4 py-2 text-white hover:bg-white/10"
-                      >
-                        My Profile
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          navigate("/orders");
-                          setProfileOpen(false);
-                        }}
-                        className="w-full text-left px-4 py-2 text-white hover:bg-white/10"
-                      >
-                        My Orders
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          navigate("/settings");
-                          setProfileOpen(false);
-                        }}
-                        className="w-full text-left px-4 py-2 text-white hover:bg-white/10"
-                      >
-                        Settings
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          navigate("/help");
-                          setProfileOpen(false);
-                        }}
-                        className="w-full text-left px-4 py-2 text-white hover:bg-white/10"
-                      >
-                        Help & Support
-                      </button>
-
-                      {/* LOGOUT */}
-                      <div className="border-t border-white/10 mt-2">
-                        <button
-                          onClick={handleLogout}
-                          className="w-full text-left px-4 py-2 text-red-400 hover:bg-white/10"
-                        >
-                          Logout
-                        </button>
-                      </div>
-
+                {profileOpen ? (
+                  <div className="absolute right-0 mt-3 w-60 overflow-hidden rounded-xl border border-white/10 bg-[#101514] shadow-2xl">
+                    <div className="border-b border-white/10 px-4 py-3">
+                      <p className="font-semibold text-white">{displayName}</p>
+                      <p className="mt-1 truncate text-xs text-white/45">{displayEmail}</p>
                     </div>
-                  )}
+                    {[
+                      ["My Profile", "/profile"],
+                      ["My Orders", "/orders"],
+                      ["Settings", "/settings"],
+                      ["Help & Support", "/help"]
+                    ].map(([label, path]) => (
+                      <button
+                        key={path}
+                        type="button"
+                        onClick={() => {
+                          navigate(path);
+                          setProfileOpen(false);
+                        }}
+                        className="block w-full px-4 py-3 text-left text-sm text-white/75 hover:bg-white/5 hover:text-white"
+                      >
+                        {label}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="block w-full border-t border-white/10 px-4 py-3 text-left text-sm text-red-400 hover:bg-white/5"
+                    >
+                      Sign Out
+                    </button>
+                  </div>
+                ) : null}
                 </div>
               </div>
             )}
           </div>
 
-          {/* MOBILE MENU BUTTON */}
           <button
-            className="lg:hidden text-white text-3xl"
+            type="button"
+            className="lg:hidden"
             onClick={() => setMenuOpen(!menuOpen)}
+            aria-label="Toggle navigation"
           >
-            {menuOpen ? "✕" : "☰"}
+            {menuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </button>
         </div>
 
-        {/* MOBILE MENU */}
-        {menuOpen && (
-          <div className="lg:hidden bg-black border-t border-white/10 py-6 flex flex-col items-center space-y-6">
-
-            <Link to="/" onClick={() => setMenuOpen(false)} className="text-white text-lg">
-              Home
-            </Link>
-
-            <Link to="/products" onClick={() => setMenuOpen(false)} className="text-white text-lg">
-              Products
-            </Link>
-
-            <Link to="/mobile" onClick={() => setMenuOpen(false)} className="text-white text-lg">
-              Mobile App
-            </Link>
-
-            <Link to="/features" onClick={() => setMenuOpen(false)} className="text-white text-lg">
-              Features
-            </Link>
-
-            <Link to="/how-it-works" onClick={() => setMenuOpen(false)} className="text-white text-lg">
-              How It Works
-            </Link>
-
-            <Link to="/why" onClick={() => setMenuOpen(false)} className="text-white text-lg">
-              Why SabPe
-            </Link>
-
-            <Link to="/faq" onClick={() => setMenuOpen(false)} className="text-white text-lg">
-              FAQ
-            </Link>
-
-            {!loggedIn ? (
-              <>
-                <Link to="/login" className="text-white border border-yellow-400 px-6 py-2 rounded-full">
-                  Login
-                </Link>
-
-                <Link to="/signup" className="bg-yellow-400 text-black px-6 py-3 rounded-full font-semibold">
-                  Start Investing
-                </Link>
-              </>
-            ) : (
-              <>
-                <Link to="/dashboard" className="bg-yellow-400 text-black px-6 py-3 rounded-full font-semibold">
-                  Dashboard
-                </Link>
-
-                <button
-                  onClick={handleLogout}
-                  className="text-white border border-red-500 px-6 py-2 rounded-full"
+        {menuOpen ? (
+          <div className="mb-4 rounded-xl border border-white/10 bg-black/95 p-4 lg:hidden">
+            <div className="flex flex-col gap-3">
+              {navItems.map(([label, path]) => (
+                <Link
+                  key={path}
+                  to={path}
+                  onClick={() => setMenuOpen(false)}
+                  className="rounded-lg px-3 py-2 text-white/80 hover:bg-white/5"
                 >
-                  Logout
-                </button>
-              </>
-            )}
+                  {label}
+                </Link>
+              ))}
+              {loggedIn ? (
+                <>
+                  <Link to="/notifications" onClick={() => setMenuOpen(false)} className="rounded-lg px-3 py-2 text-white/80 hover:bg-white/5">
+                    Notifications
+                  </Link>
+                  <Link to="/profile" onClick={() => setMenuOpen(false)} className="rounded-lg px-3 py-2 text-white/80 hover:bg-white/5">
+                    Profile
+                  </Link>
+                  <button onClick={handleLogout} className="rounded-lg px-3 py-2 text-left text-red-400 hover:bg-white/5">
+                    Sign Out
+                  </button>
+                </>
+              ) : (
+                <Link to="/signup" onClick={() => setMenuOpen(false)} className="rounded-lg bg-yellow-400 px-3 py-2 text-center font-semibold text-black">
+                  Start
+                </Link>
+              )}
+            </div>
           </div>
-        )}
+        ) : null}
       </div>
     </nav>
   );
