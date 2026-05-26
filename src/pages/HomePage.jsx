@@ -11,7 +11,10 @@ import {
   WalletCards
 } from "lucide-react";
 import Navbar from "../components/Navbar";
+import LiveMetalChart from "../components/LiveMetalChart";
 import { isAuthenticated } from "../api/authApi";
+import { fetchAugmontBuyOrders } from "../api/augmontApi";
+import { loadUserDashboardData, resolveUniqueId } from "../utils/userDashboard";
 
 const formatCurrency = (value) =>
   `₹${Number(value || 0).toLocaleString("en-IN", {
@@ -313,21 +316,52 @@ function MiniChart({ variant = "wide" }) {
 
 function LoggedInHome() {
   const navigate = useNavigate();
-  const portfolioValue = Number(localStorage.getItem("portfolioValue") || 482640);
+  const [loading, setLoading] = useState(true);
+  const [dash, setDash] = useState(null);
+  const [transactions, setTransactions] = useState([]);
+
+  useEffect(() => {
+    const uniqueId = resolveUniqueId();
+    loadUserDashboardData({ uniqueId, forceRates: true })
+      .then(async (data) => {
+        setDash(data);
+        if (uniqueId) {
+          const ordersRes = await fetchAugmontBuyOrders({ uniqueId });
+          const recent = (ordersRes?.orders || []).slice(0, 4).map((order) => {
+            const grams = Number(order.gold ?? order.quantity ?? 0).toFixed(2);
+            const amount = formatCurrency(order.amount);
+            const date = order.date || order.createdAt || "";
+            return [
+              "Gold",
+              String(order.type || "BUY").toUpperCase(),
+              `${grams}g · ${amount} · ${date ? new Date(date).toLocaleString("en-IN") : "—"}`,
+              amount
+            ];
+          });
+          setTransactions(recent);
+        }
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  const portfolioValue = dash?.portfolio?.portfolioValue || 0;
+  const profit = dash?.portfolio?.profit || 0;
+  const profitPct = dash?.portfolio?.profitPercent || 0;
 
   const assets = [
-    ["Gold Holdings", "24.82g", "+3.2%", "gold"],
-    ["Silver Holdings", "182.4g", "+1.8%", "cyan"],
-    ["Invested", "₹4,16,800", "+12.6%", "gold"],
-    ["Total Profit", "₹65,840", "+15.8%", "cyan"]
+    ["Gold Holdings", `${(dash?.passbook?.goldGrams || 0).toFixed(2)}g`, "", "gold"],
+    ["Silver Holdings", `${(dash?.passbook?.silverGrams || 0).toFixed(1)}g`, "", "cyan"],
+    ["Invested", formatCurrency(dash?.portfolio?.invested || 0), "", "gold"],
+    ["Total Profit", formatCurrency(profit), `${profitPct >= 0 ? "+" : ""}${profitPct.toFixed(1)}%`, "cyan"]
   ];
 
-  const transactions = [
-    ["Gold", "BUY", "0.82g · ₹15,121/g · Today · 4:32 PM", "₹12,400"],
-    ["Gold", "SELL", "42.0g · ₹77.4/g · Yesterday · 11:18 AM", "₹12,400"],
-    ["Gold", "BUY", "0.33g · ₹15,082/g · May 06 · 9:00 AM", "₹12,400"],
-    ["Gold", "BUY", "1.65g · ₹15,150/g · May 04 · 2:14 PM", "₹12,400"]
-  ];
+  if (loading) {
+    return (
+      <div className="karatly-shell flex min-h-screen items-center justify-center text-white/50">
+        Loading your portfolio…
+      </div>
+    );
+  }
 
   return (
     <div className="karatly-shell min-h-screen text-white">
@@ -339,16 +373,19 @@ function LoggedInHome() {
               <p className="text-xs uppercase tracking-[0.2em] text-white/55">Portfolio Value</p>
               <h1 className="mt-2 text-4xl font-bold text-yellow-300">{formatCurrency(portfolioValue)}</h1>
               <p className="mt-3 text-xs text-white/65">
-                <span className="mr-2 rounded-full bg-green-500/20 px-2 py-1 text-green-300">↗ +1,420</span>
-                Today, +1.34%
+                <span className={`mr-2 rounded-full px-2 py-1 ${profit >= 0 ? "bg-green-500/20 text-green-300" : "bg-red-500/20 text-red-300"}`}>
+                  {profit >= 0 ? "↗" : "↘"} {formatCurrency(Math.abs(profit))}
+                </span>
+                P&L {profitPct >= 0 ? "+" : ""}
+                {profitPct.toFixed(2)}%
               </p>
             </div>
             <div className="grid h-16 w-16 place-items-center rounded-full bg-yellow-400 text-sm font-bold text-yellow-900 shadow-[0_0_35px_rgba(250,204,21,0.35)]">
               KARATLY
             </div>
           </div>
-          <div className="mt-5 h-40">
-            <MiniChart />
+          <div className="mt-5">
+            <LiveMetalChart data={dash?.history?.gold} metalLabel="Gold" />
           </div>
         </section>
 
@@ -414,8 +451,8 @@ function LoggedInHome() {
               </span>
             ))}
           </div>
-          <div className="mt-8 h-56">
-            <MiniChart />
+          <div className="mt-8">
+            <LiveMetalChart data={dash?.history?.gold} metalLabel="Gold" accent="#31d7ff" />
           </div>
         </section>
 
@@ -433,6 +470,9 @@ function LoggedInHome() {
         <section className="mt-10">
           <h2 className="text-xl font-bold">Recent Transaction</h2>
           <div className="mt-4 space-y-4">
+            {transactions.length === 0 ? (
+              <p className="text-sm text-white/45">No recent transactions yet.</p>
+            ) : null}
             {transactions.map(([name, type, meta, amount]) => (
               <div key={`${type}-${meta}`} className="karatly-card flex items-center justify-between rounded-lg p-4">
                 <div className="flex items-center gap-4">

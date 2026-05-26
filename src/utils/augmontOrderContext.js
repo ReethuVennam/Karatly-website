@@ -192,7 +192,7 @@ export const prepareAugmontOrderContext = async (side = "buy") => {
     side === "sell"
       ? await ensureAugmontAddressForOrder(userContext)
       : null;
-  const rateResponse = await fetchLiveGoldRateSnapshot({ allowNetwork: false });
+  const rateResponse = await fetchLiveGoldRateSnapshot({ allowNetwork: true, force: true });
   const snapshot = rateResponse?.snapshot || {};
   const price =
     side === "sell"

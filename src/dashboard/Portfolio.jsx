@@ -3,9 +3,11 @@ import { ArrowLeft, ArrowDownRight, ArrowUpRight, Clock, Landmark, WalletCards }
 import { useLocation, useNavigate } from "react-router-dom";
 import BuyGold from "./BuyGold";
 import SellGold from "./SellGold";
+import LiveMetalChart from "../components/LiveMetalChart";
 import TransactionHistory from "../components/TransactionHistory";
 import {
   fetchAugmontBuyOrders,
+  fetchAugmontKycProfile,
   fetchAugmontPassbook,
   fetchAugmontRateHistory,
   fetchAugmontSipRates,
@@ -59,48 +61,6 @@ const getDateRange = () => {
   };
 };
 
-function MiniPortfolioChart() {
-  const bars = [92, 70, 112, 78, 96, 64, 126, 88, 108, 76, 118, 82];
-  const line = "18,88 82,78 146,96 210,66 274,78 338,48 402,62 466,40 530,52 594,28";
-
-  return (
-    <div className="relative h-52 overflow-hidden rounded-lg border border-white/10 bg-black/20 p-4">
-      <svg viewBox="0 0 620 180" className="h-full w-full" aria-hidden="true">
-        <defs>
-          <linearGradient id="portfolioBars" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="#ffd84d" />
-            <stop offset="100%" stopColor="#5a3c08" />
-          </linearGradient>
-        </defs>
-        {bars.map((height, index) => (
-          <rect
-            key={index}
-            x={24 + index * 49}
-            y={154 - height}
-            width="22"
-            height={height}
-            rx="6"
-            fill="url(#portfolioBars)"
-            opacity={index % 2 ? 0.62 : 0.92}
-          />
-        ))}
-        <polyline
-          points={line}
-          fill="none"
-          stroke="#31d7ff"
-          strokeWidth="3"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-      <div className="absolute bottom-4 left-4 flex gap-4 text-[11px] text-white/55">
-        <span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-yellow-300" />Buy</span>
-        <span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-cyan-300" />Sell</span>
-      </div>
-    </div>
-  );
-}
-
 export default function Portfolio() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -108,6 +68,9 @@ export default function Portfolio() {
   const [gold, setGold] = useState(0);
   const [value, setValue] = useState(0);
   const [invested, setInvested] = useState(0);
+  const [rateHistory, setRateHistory] = useState([]);
+  const [kycVerified, setKycVerified] = useState(false);
+  const [ratesLoading, setRatesLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(() => getInitialTab(location));
   const [selectedProduct] = useState(() => getInitialSelectedProduct(location));
 
@@ -131,11 +94,13 @@ export default function Portfolio() {
         let sellRate = toNumber(localStorage.getItem("goldSellRate"));
         const { fromDate, toDate } = getDateRange();
 
-        const [rates] = await Promise.all([
+        const [rates, historyRes] = await Promise.all([
           fetchLiveGoldRateSnapshot({ allowNetwork, force: forceRates }),
           fetchAugmontSipRates(undefined, { allowNetwork, force: forceRates }),
           fetchAugmontRateHistory({ fromDate, toDate, metalType: "gold", allowNetwork, force: forceRates })
         ]);
+        setRateHistory(historyRes?.ok ? historyRes.history || [] : []);
+        setRatesLoading(false);
 
         buyRate = toNumber(
           rates?.snapshot?.buyPrice ??
@@ -150,6 +115,15 @@ export default function Portfolio() {
           localStorage.setItem("goldSellRate", String(sellRate));
           localStorage.setItem("goldSellRateTime", String(Date.now()));
         }
+
+        const profile = getUserProfile() || {};
+        const kycRes = uniqueId ? await fetchAugmontKycProfile(uniqueId).catch(() => null) : null;
+        const kycStatus = (kycRes?.kycProfile?.status || profile.kycStatus || "").toLowerCase();
+        setKycVerified(
+          profile.panVerified ||
+            profile.aadhaarVerified ||
+            ["approved", "verified", "completed"].includes(kycStatus)
+        );
 
         if (!includePassbook) {
           const cachedGoldGrams = toDisplayGrams(localStorage.getItem("goldBalance"));
@@ -284,7 +258,7 @@ export default function Portfolio() {
                 ))}
               </div>
             </div>
-            <MiniPortfolioChart />
+            <LiveMetalChart data={rateHistory} loading={ratesLoading} metalLabel="Gold" />
           </div>
         </section>
 
@@ -339,7 +313,13 @@ export default function Portfolio() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-white/55">KYC</span>
-                  <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-xs text-emerald-300">Verified</span>
+                  <span
+                    className={`rounded-full px-3 py-1 text-xs ${
+                      kycVerified ? "bg-emerald-500/15 text-emerald-300" : "bg-amber-500/15 text-amber-300"
+                    }`}
+                  >
+                    {kycVerified ? "Verified" : "Pending"}
+                  </span>
                 </div>
               </div>
             </section>

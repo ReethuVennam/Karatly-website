@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowDownRight, ArrowUpRight, BadgeIndianRupee, CircleDollarSign, WalletCards } from "lucide-react";
-import { fetchLiveGoldRateSnapshot } from "../api/augmontApi";
 import { clearAuthSession, getUserProfile } from "../api/authApi";
+import { loadUserDashboardData } from "../utils/userDashboard";
 
 const formatCurrency = (value) =>
   `₹${Number(value || 0).toLocaleString("en-IN", {
@@ -110,18 +110,13 @@ export default function Dashboard() {
 
   useEffect(() => {
     const loadPortfolioSnapshot = async () => {
-      const stored = Number(localStorage.getItem("goldBalance") || 0);
-      setGold(stored);
       try {
-        const rates = await fetchLiveGoldRateSnapshot({ allowNetwork: false });
-        const price = Number(rates?.snapshot?.buyPrice || 0);
-        if (price > 0) {
-          localStorage.setItem("goldPrice", String(price));
-          setValue(stored * price);
-          setInvested(stored * price * 0.9);
-        }
+        const dash = await loadUserDashboardData({ forceRates: true });
+        setGold(dash.passbook.goldGrams);
+        setValue(dash.portfolio.portfolioValue);
+        setInvested(dash.portfolio.invested);
       } catch (error) {
-        console.error("Dashboard rate load error:", error);
+        console.error("Dashboard load error:", error);
       }
     };
 

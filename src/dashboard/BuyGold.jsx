@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import {
   ArrowLeft,
@@ -16,17 +17,18 @@ import {
 import {
   createAugmontBuyOrder,
   fetchAugmontBuyInvoice,
-  fetchAugmontBuyOrders,
   fetchLiveGoldRateSnapshot,
 } from "../api/augmontApi";
 import { buildBuyInvoicePdf } from "../utils/augmontInvoicePdf";
+import { getUserProfile } from "../api/authApi";
 import { prepareAugmontOrderContext } from "../utils/augmontOrderContext";
+import {
+  checkPurchaseAllowed,
+  GST_RATE as GST,
+  MIN_BUY_PRETAX
+} from "../utils/kycGuards";
 
-const GST = 0.03;
 const MAX_BUY = 5000000;
-const NON_KYC_FY_LIMIT = 5000;
-const KYC_VERIFIED_FY_LIMIT = 500000;
-const MIN_BUY_PRETAX = 5;
 
 const formatCurrency = (value) =>
   new Intl.NumberFormat("en-IN", {
@@ -44,7 +46,8 @@ const stepItems = [
 ];
 
 export default function BuyGold() {
-  const user = JSON.parse(localStorage.getItem("userProfile") || "{}");
+  const navigate = useNavigate();
+  const user = getUserProfile() || {};
   const uniqueId = user?.augmontUniqueId || user?.uniqueId || "";
 
   const [amount, setAmount] = useState("1000");
@@ -60,7 +63,7 @@ export default function BuyGold() {
 
   const loadRate = useCallback(async ({ silent = false } = {}) => {
     if (!silent) setIsRateLoading(true);
-    const response = await fetchLiveGoldRateSnapshot({ allowNetwork: false });
+    const response = await fetchLiveGoldRateSnapshot({ allowNetwork: true, force: !silent });
     if (!response?.snapshot || response.snapshot.buyPrice <= 0) {
       setRateError("Live buy rate unavailable. Please retry.");
       setIsRateLoading(false);
@@ -82,7 +85,7 @@ export default function BuyGold() {
 
   const paidAmount = Number(amount || 0);
   const displayAmount = paidAmount || 1000;
-  const displayRate = rate || 7421.5;
+  const displayRate = rate;
   const preTax = displayAmount / (1 + GST);
   const gstAmount = displayAmount - preTax;
   const grams = displayRate ? preTax / displayRate : 0;
@@ -100,30 +103,13 @@ export default function BuyGold() {
 
   const handleBuy = async () => {
     if (!paidAmount) return toast.error("Enter amount");
-    if (preTax < MIN_BUY_PRETAX) return toast.error(`Minimum purchase is ${formatCurrency(MIN_BUY_PRETAX)} exclusive of tax.`);
     if (paidAmount > MAX_BUY) return toast.error(`Maximum buy amount is ${formatCurrency(MAX_BUY)}.`);
 
-    try {
-      const buyResponse = await fetchAugmontBuyOrders({ uniqueId });
-      const fyLimit = user?.panVerified ? KYC_VERIFIED_FY_LIMIT : NON_KYC_FY_LIMIT;
-      const fyStart = new Date();
-      fyStart.setMonth(3);
-      fyStart.setDate(1);
-      if (fyStart > new Date()) fyStart.setFullYear(fyStart.getFullYear() - 1);
-
-      const fyTotal = (buyResponse?.orders || [])
-        .filter((order) => {
-          const date = new Date(order.date || order.createdAt || 0);
-          return date >= fyStart && (order.status || "").toLowerCase() !== "cancelled";
-        })
-        .reduce((sum, order) => sum + Number(order.amount || 0), 0);
-
-      if (fyTotal + paidAmount > fyLimit) {
-        toast.error(`Purchase blocked. Remaining financial-year limit: ${formatCurrency(Math.max(0, fyLimit - fyTotal))}.`);
-        return;
-      }
-    } catch (error) {
-      console.warn("Could not verify FY purchase limit:", error);
+    const guard = await checkPurchaseAllowed({ uniqueId, amount: paidAmount, profile: user });
+    if (!guard.ok) {
+      toast.error(guard.message);
+      if (guard.action) navigate(guard.action);
+      return;
     }
 
     setLoading(true);
@@ -343,7 +329,7 @@ export default function BuyGold() {
             Encrypted checkout. Payment confirmation will place the Augmont buy order.
           </div>
           {buyFlowError ? <div className="mt-4 rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-200">{buyFlowError}</div> : null}
-          <PrimaryButton disabled={!rate || loading} onClick={handleBuy}>
+          <PrimaryButton disabled={!rate || loading || isRateLoading} onClick={handleBuy}>
             {loading ? "Processing..." : `Pay ${formatCurrency(displayAmount)}`}
           </PrimaryButton>
         </Card>
@@ -443,7 +429,19 @@ export default function BuyGold() {
           ))}
         </div>
         {rateError ? <div className="mt-4 rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-200">{rateError}</div> : null}
-        <PrimaryButton onClick={() => paidAmount > 0 ? setScreen("review") : toast.error("Enter amount")}>
+        <PrimaryButton
+          disabled={!rate || isRateLoading}
+          onClick={async () => {
+            if (!paidAmount) return toast.error("Enter amount");
+            const guard = await checkPurchaseAllowed({ uniqueId, amount: paidAmount, profile: user });
+            if (!guard.ok) {
+              toast.error(guard.message);
+              if (guard.action) navigate(guard.action);
+              return;
+            }
+            setScreen("review");
+          }}
+        >
           Review purchase
         </PrimaryButton>
       </Card>

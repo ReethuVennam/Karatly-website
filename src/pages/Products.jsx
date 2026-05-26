@@ -4,6 +4,8 @@ import { useNavigate } from "react-router-dom";
 
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import MarketRatesPanel from "../components/MarketRatesPanel";
+import { isAuthenticated } from "../api/authApi";
 import ProductCard from "../components/ProductCard";
 import { getUserProfile, setUserProfile } from "../api/authApi";
 import {
@@ -779,55 +781,7 @@ export default function Products() {
       <main className="pt-20">
         <section className="px-5 py-10 lg:px-20">
           <div className="mx-auto max-w-6xl">
-            <div className="karatly-panel mb-7 rounded-lg p-5">
-              <div className="flex items-start justify-between gap-5">
-                <div>
-                  <p className="text-xs text-white/50">Spot Rate Gold</p>
-                  <h2 className="mt-2 text-3xl font-bold text-yellow-300">&#8377;15,792 /g</h2>
-                  <p className="mt-2 text-sm text-emerald-400">+1.34% today</p>
-                </div>
-                <div className="rounded-full bg-black/35 p-1 text-xs">
-                  <span className="rounded-full bg-yellow-400 px-6 py-2 text-black">Gold</span>
-                  <span className="px-6 py-2 text-white/55">Silver</span>
-                </div>
-              </div>
-              <div className="mt-6 flex justify-around text-xs text-white/45">
-                {["1D", "1W", "1M", "3M", "1Y"].map((item) => <span key={item}>{item}</span>)}
-              </div>
-              <div className="relative mt-5 h-56 rounded-lg bg-black/10 px-4 pb-5 pt-3">
-                <svg viewBox="0 0 900 210" className="absolute inset-0 h-full w-full px-4 pb-5 pt-3" aria-hidden="true">
-                  <defs>
-                    <linearGradient id="marketGoldBars" x1="0" x2="0" y1="0" y2="1">
-                      <stop offset="0%" stopColor="#f4b82d" />
-                      <stop offset="100%" stopColor="#5a4112" />
-                    </linearGradient>
-                  </defs>
-                  {[125, 145, 112, 158, 134, 150, 121, 142, 110, 138].map((y, index) => (
-                    <rect
-                      key={index}
-                      x={60 + index * 82}
-                      y={y}
-                      width="30"
-                      height={185 - y}
-                      rx="7"
-                      fill="url(#marketGoldBars)"
-                    />
-                  ))}
-                  <polyline
-                    points="60,126 142,140 224,108 306,150 388,134 470,118 552,137 634,130 716,154 798,136"
-                    fill="none"
-                    stroke="#31d7ff"
-                    strokeWidth="3"
-                  />
-                  <line x1="634" y1="58" x2="634" y2="185" stroke="#ffd54a" strokeDasharray="5 6" opacity="0.75" />
-                </svg>
-                <span className="absolute bottom-20 right-[23%] rounded-full bg-[#3a3325] px-3 py-1 text-[10px] text-yellow-300">15,792</span>
-              </div>
-              <div className="mt-5 flex gap-5 text-xs text-white/60">
-                <span><span className="mr-2 inline-block h-2 w-2 rounded-full bg-yellow-400" />Buy</span>
-                <span><span className="mr-2 inline-block h-2 w-2 rounded-full bg-cyan-400" />Sell</span>
-              </div>
-            </div>
+            {isAuthenticated() ? <MarketRatesPanel /> : null}
 
             <input
               type="search"

@@ -9,7 +9,11 @@ const AUGMONT_BASE_URL = import.meta.env.VITE_AUGMONT_BASE_URL || "https://uatbc
 
 const post = async (path, body) => {
   try {
-    const token = localStorage.getItem("authToken") || localStorage.getItem("jwt") || "";
+    const token =
+      localStorage.getItem("token") ||
+      localStorage.getItem("authToken") ||
+      localStorage.getItem("jwt") ||
+      "";
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
 

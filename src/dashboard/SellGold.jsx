@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import {
   ArrowLeft,
@@ -23,6 +24,8 @@ import {
   fetchLiveGoldRateSnapshot,
 } from "../api/augmontApi";
 import { prepareAugmontOrderContext } from "../utils/augmontOrderContext";
+import { checkSellBankReady } from "../utils/kycGuards";
+import { loadUserDashboardData } from "../utils/userDashboard";
 
 const MAX_SELL_AMOUNT = 1000000;
 const SELL_COOLDOWN_HOURS = 48;
@@ -74,7 +77,8 @@ const stepItems = [
 ];
 
 export default function SellGold() {
-  const [goldOwned, setGoldOwned] = useState(() => Number(localStorage.getItem("goldBalance") || 0));
+  const navigate = useNavigate();
+  const [goldOwned, setGoldOwned] = useState(0);
   const [grams, setGrams] = useState("1");
   const [amount, setAmount] = useState("");
   const [goldPrice, setGoldPrice] = useState(0);
@@ -99,7 +103,7 @@ export default function SellGold() {
 
   const loadRate = useCallback(async ({ silent = false } = {}) => {
     if (!silent) setIsRateLoading(true);
-    const result = await fetchLiveGoldRateSnapshot({ allowNetwork: false });
+    const result = await fetchLiveGoldRateSnapshot({ allowNetwork: true, force: !silent });
     if (!result?.ok) {
       setRateError(result?.message || "Unable to fetch live sell price");
       setIsRateLoading(false);
@@ -130,9 +134,10 @@ export default function SellGold() {
 
   useEffect(() => {
     if (!uniqueId) return;
-    fetchAugmontUserBanks(uniqueId).then((response) => {
-      if (response?.ok && response.banks?.length > 0) {
-        const normalizedBanks = response.banks.map(normalizeBank).filter(Boolean);
+    loadUserDashboardData({ uniqueId, forceRates: false, includeOrders: false }).then((dash) => {
+      setGoldOwned(dash.passbook.goldGrams);
+      if (dash.banks?.length) {
+        const normalizedBanks = dash.banks.map(normalizeBank).filter(Boolean);
         setBanks(normalizedBanks);
         const storedPrimaryBankId = getStoredPrimaryBankId();
         const primaryFromStorage = storedPrimaryBankId
@@ -166,6 +171,13 @@ export default function SellGold() {
     if (parsedGrams > goldOwned) return toast.error("You don't have enough gold to sell.");
     if (payout > MAX_SELL_AMOUNT) return toast.error(`Maximum sell amount is ${formatCurrency(MAX_SELL_AMOUNT)}.`);
 
+    const bankGuard = checkSellBankReady(banks);
+    if (!bankGuard.ok) {
+      toast.error(bankGuard.message);
+      navigate(bankGuard.action || "/bank");
+      return;
+    }
+
     setIsSelling(true);
     setSellFlowError("");
     setScreen("processing");
@@ -197,11 +209,12 @@ export default function SellGold() {
 
     const sellUserBankId = getBankId(currentBank);
     if (!sellUserBankId) {
-      const message = "No primary bank account found. Please set a primary bank in Profile first.";
+      const message = "Add a bank account in Payment Methods before selling.";
       setSellFlowError(message);
       setIsSelling(false);
       setScreen("bank");
       toast.error(message);
+      navigate("/bank");
       return;
     }
 
@@ -213,14 +226,24 @@ export default function SellGold() {
     setAmount(livePayout.toFixed(2));
     setRateError("");
 
-    const orderResponse = await createAugmontSellOrder({
-      request: {
-        metalType: "gold",
-        quantity: parsedGrams.toFixed(4),
-        uniqueId: orderContext.uniqueId,
-        userBankId: sellUserBankId,
-      },
-    });
+    let orderResponse;
+    try {
+      orderResponse = await createAugmontSellOrder({
+        request: {
+          metalType: "gold",
+          quantity: parsedGrams.toFixed(4),
+          uniqueId: orderContext.uniqueId,
+          userBankId: sellUserBankId,
+        },
+      });
+    } catch (error) {
+      const message = error?.message || "Sell order failed. Please try again.";
+      setSellFlowError(message);
+      setIsSelling(false);
+      setScreen("bank");
+      toast.error(message);
+      return;
+    }
 
     if (!orderResponse?.ok) {
       const message = orderResponse?.message || "Sell order failed";
@@ -231,10 +254,15 @@ export default function SellGold() {
       return;
     }
 
-    const detailResponse = await fetchAugmontSellOrderDetail({
-      merchantTransactionId,
-      uniqueId: orderContext.uniqueId,
-    });
+    let detailResponse = { order: {} };
+    try {
+      detailResponse = await fetchAugmontSellOrderDetail({
+        merchantTransactionId,
+        uniqueId: orderContext.uniqueId,
+      });
+    } catch {
+      detailResponse = { order: {} };
+    }
     setIsSelling(false);
 
     const order = orderResponse.order || {};
@@ -351,7 +379,19 @@ export default function SellGold() {
           <div className="mt-6 rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-100/80">
             Augmont requires a {SELL_COOLDOWN_HOURS}-hour waiting period after buy orders before selling eligible gold.
           </div>
-          <PrimaryButton onClick={() => setScreen("bank")}>Confirm payout bank</PrimaryButton>
+          <PrimaryButton
+            onClick={() => {
+              const bankGuard = checkSellBankReady(banks);
+              if (!bankGuard.ok) {
+                toast.error(bankGuard.message);
+                navigate(bankGuard.action || "/bank");
+                return;
+              }
+              setScreen("bank");
+            }}
+          >
+            Confirm payout bank
+          </PrimaryButton>
         </Card>
       );
     }
@@ -395,12 +435,12 @@ export default function SellGold() {
             </div>
           ) : (
             <div className="mt-6 rounded-xl border border-orange-500/20 bg-orange-500/10 p-5 text-sm text-orange-100">
-              No bank account found. Add and set a primary bank in Profile before selling.
+              No bank account found. Add a bank in Payment Methods to receive sell payouts.
             </div>
           )}
           <button
             type="button"
-            onClick={() => { window.location.href = "/profile"; }}
+            onClick={() => navigate("/bank")}
             className="mt-4 rounded-xl border border-yellow-500/30 px-4 py-3 text-sm font-semibold text-yellow-300 hover:bg-yellow-500/10"
           >
             Add new bank account

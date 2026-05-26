@@ -4,11 +4,11 @@ import Navbar from "../components/Navbar";
 import { clearAuthSession, getUserProfile, validateToken } from "../api/authApi";
 import {
   fetchAugmontKycProfile,
-  fetchAugmontPassbook,
   fetchAugmontUserBanks,
   fetchAugmontUserProfile,
   getAugmontUser,
 } from "../api/augmontApi";
+import { loadUserDashboardData } from "../utils/userDashboard";
 import {
   Bell,
   ChevronRight,
@@ -40,7 +40,8 @@ export default function ProfilePage() {
   const [email, setEmail] = useState(initialProfile.email || "");
   const [kycStatus, setKycStatus] = useState("pending");
   const [goldBalance, setGoldBalance] = useState("0.0000");
-  const [silverBalance, setSilverBalance] = useState("182");
+  const [silverBalance, setSilverBalance] = useState("0");
+  const [portfolioValue, setPortfolioValue] = useState(0);
   const [banks, setBanks] = useState([]);
   const [profilePhoto, setProfilePhoto] = useState(() => {
     const profile = getUserProfile() || {};
@@ -60,11 +61,11 @@ export default function ProfilePage() {
         return;
       }
 
-      const [profileRes, kycRes, banksRes, passbookRes] = await Promise.all([
+      const [profileRes, kycRes, banksRes, dashboard] = await Promise.all([
         fetchAugmontUserProfile(uniqueId),
         fetchAugmontKycProfile(uniqueId),
         fetchAugmontUserBanks(uniqueId),
-        fetchAugmontPassbook(uniqueId),
+        loadUserDashboardData({ uniqueId, forceRates: true }),
       ]);
 
       if (profileRes?.ok) {
@@ -75,11 +76,9 @@ export default function ProfilePage() {
       }
       if (kycRes?.ok) setKycStatus((kycRes.kycProfile?.status || "pending").toLowerCase());
       if (banksRes?.ok) setBanks(banksRes.banks || []);
-      if (passbookRes?.ok) {
-        const passbook = passbookRes.passbook || {};
-        setGoldBalance(passbook.goldGrms || "0.0000");
-        setSilverBalance(passbook.silverGrms || "182");
-      }
+      setGoldBalance(String(dashboard.passbook.goldGrams || 0));
+      setSilverBalance(String(dashboard.passbook.silverGrams || 0));
+      setPortfolioValue(dashboard.portfolio.portfolioValue || 0);
       const latestProfile = getUserProfile() || {};
       setProfilePhoto(latestProfile.profilePhoto || localStorage.getItem("profilePhoto") || "");
       setLoading(false);
@@ -133,7 +132,7 @@ export default function ProfilePage() {
                 {[
                   ["Gold", `${parseFloat(goldBalance).toFixed(2)}g`, "text-yellow-300", Wallet],
                   ["Silver", `${parseFloat(silverBalance || 182).toFixed(0)}g`, "text-cyan-300", ShieldCheck],
-                  ["Portfolio Value", "₹4.8L", "text-emerald-400", CreditCard],
+                  ["Portfolio Value", `₹${Number(portfolioValue || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`, "text-emerald-400", CreditCard],
                 ].map(([label, amount, color, Icon]) => (
                   <div key={label} className="flex items-center gap-4 rounded-md border border-white/15 bg-[#15191a] p-5">
                     <div className="grid h-12 w-12 place-items-center rounded-full bg-black text-yellow-300">
