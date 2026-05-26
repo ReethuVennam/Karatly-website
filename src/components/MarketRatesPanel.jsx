@@ -121,7 +121,7 @@ export default function MarketRatesPanel() {
           sell={data?.rates?.goldSell}
           change={goldChange}
           accent="#f5c842"
-          onTrade={() => navigate("/portfolio?tab=buy")}
+          onTrade={() => window.dispatchEvent(new CustomEvent('openTradeModal', { detail: { type: 'buy' } }))}
         />
         <RateCard
           label="Silver"
@@ -129,7 +129,7 @@ export default function MarketRatesPanel() {
           sell={data?.rates?.silverSell}
           change={silverChange}
           accent="#94a3b8"
-          onTrade={() => navigate("/portfolio?tab=buy")}
+          onTrade={() => window.dispatchEvent(new CustomEvent('openTradeModal', { detail: { type: 'buy' } }))}
         />
       </div>
 

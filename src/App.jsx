@@ -47,6 +47,7 @@ import GoldPlatformPage from "./pages/GoldPlatformPage";
 
 // DEMO
 import DemoBadge from "./components/DemoBadge";
+import TradeModalHost from "./components/TradeModalHost";
 
 function App() {
   // Refresh KYC status, profilePhoto, augmontUniqueId from DB on every app load
@@ -102,6 +103,7 @@ function App() {
       </Routes>
 
       {/* Demo mode floating badge */}
+      <TradeModalHost />
       <DemoBadge />
     </Router>
   );

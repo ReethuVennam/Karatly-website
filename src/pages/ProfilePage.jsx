@@ -159,7 +159,7 @@ export default function ProfilePage() {
               <p className="text-xs text-white/45">Invest ₹7,300 more this month to reach Tier III.</p>
             </div>
           </div>
-          <button type="button" onClick={() => navigate("/portfolio?tab=buy")} className="rounded-md bg-yellow-400 px-4 py-2 text-xs font-bold text-black">
+          <button type="button" onClick={() => window.dispatchEvent(new CustomEvent('openTradeModal', { detail: { type: 'buy' } }))} className="rounded-md bg-yellow-400 px-4 py-2 text-xs font-bold text-black">
             Invest Now
           </button>
         </section>

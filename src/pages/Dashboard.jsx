@@ -142,7 +142,7 @@ export default function Dashboard() {
             Welcome to <span className="text-yellow-300">Karatly</span>
           </h1>
           <div className="mx-auto mt-5 grid max-w-xl gap-4 md:grid-cols-2">
-            <button onClick={() => navigate("/portfolio?tab=buy")} className="karatly-gold-button rounded-xl py-3 text-sm font-bold">
+            <button onClick={() => window.dispatchEvent(new CustomEvent('openTradeModal', { detail: { type: 'buy' } }))} className="karatly-gold-button rounded-xl py-3 text-sm font-bold">
               Buy Gold
             </button>
             <button onClick={() => navigate("/portfolio")} className="rounded-xl border border-yellow-500/50 py-3 text-sm font-bold text-white/80">
@@ -175,7 +175,22 @@ export default function Dashboard() {
               ["Instant", "Buy Gold", "/portfolio?tab=buy", ArrowUpRight],
               ["Anytime", "Sell Gold", "/portfolio?tab=sell", ArrowDownRight],
             ].map(([eyebrow, label, path, Icon]) => (
-              <button key={label} type="button" onClick={() => navigate(path)} className="karatly-card flex items-center justify-between rounded-md p-6 text-left">
+              <button
+                key={label}
+                type="button"
+                onClick={() => {
+                  if (String(path || "").includes("portfolio?tab=buy")) {
+                    window.dispatchEvent(new CustomEvent('openTradeModal', { detail: { type: 'buy' } }));
+                    return;
+                  }
+                  if (String(path || "").includes("portfolio?tab=sell")) {
+                    window.dispatchEvent(new CustomEvent('openTradeModal', { detail: { type: 'sell' } }));
+                    return;
+                  }
+                  navigate(path);
+                }}
+                className="karatly-card flex items-center justify-between rounded-md p-6 text-left"
+              >
                 <span>
                   <span className="block text-xs text-white/45">{eyebrow}</span>
                   <span className="text-2xl font-bold">{label}</span>

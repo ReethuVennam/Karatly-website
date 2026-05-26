@@ -399,7 +399,17 @@ function LoggedInHome() {
             <button
               key={label}
               type="button"
-              onClick={() => navigate(path)}
+              onClick={() => {
+                if (String(path || "").includes("portfolio?tab=buy")) {
+                  window.dispatchEvent(new CustomEvent('openTradeModal', { detail: { type: 'buy' } }));
+                  return;
+                }
+                if (String(path || "").includes("portfolio?tab=sell")) {
+                  window.dispatchEvent(new CustomEvent('openTradeModal', { detail: { type: 'sell' } }));
+                  return;
+                }
+                navigate(path);
+              }}
               className={`karatly-card rounded-lg p-5 text-center transition hover:border-yellow-400/60 ${index % 2 ? "bg-cyan-950/45" : ""}`}
             >
               <Icon className={`mx-auto h-8 w-8 ${index % 2 ? "text-cyan-300" : "text-yellow-300"}`} />
