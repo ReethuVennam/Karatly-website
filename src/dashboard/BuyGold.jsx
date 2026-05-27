@@ -243,11 +243,11 @@ export default function BuyGold({ embedded = false, onClose } = {}) {
           </div>
         </div>
 
-        <section className={`rounded-2xl border border-yellow-500/25 bg-black/45 ${embedded ? 'p-4' : 'p-6'} shadow-2xl backdrop-blur`}>
+        <section className={`rounded-2xl border border-yellow-500/25 bg-black/45 ${embedded ? 'p-3' : 'p-6'} shadow-2xl backdrop-blur`}>
           <div className={`flex flex-col ${embedded ? 'gap-3 md:flex-row md:items-start md:justify-between' : 'gap-5 lg:flex-row lg:items-start lg:justify-between'}`}>
             <div>
               <p className={`${embedded ? 'text-xs' : 'text-sm'} uppercase tracking-[0.2em] text-yellow-300/70`}>Buy Gold</p>
-              <h1 className={`mt-1 ${embedded ? 'text-2xl' : 'text-3xl'} font-bold`}>Complete your gold purchase</h1>
+              <h1 className={`mt-1 ${embedded ? 'text-xl' : 'text-3xl'} font-bold`}>Complete your gold purchase</h1>
               <p className={`${embedded ? 'mt-1 max-w-md text-xs' : 'mt-2 max-w-2xl text-sm'} text-white/50`}>
                 Choose an amount, review the gold quantity, select payment, and secure it in your vault.
               </p>
@@ -255,8 +255,8 @@ export default function BuyGold({ embedded = false, onClose } = {}) {
             <Stepper currentStep={currentStep} embedded={embedded} />
           </div>
 
-          <div className={`${embedded ? 'mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_290px]' : 'mt-8 grid gap-6 lg:grid-cols-[1fr_320px]'}`}>
-                <main>{renderStep()}</main>
+          <div className={`${embedded ? 'mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_250px]' : 'mt-8 grid gap-6 lg:grid-cols-[1fr_320px]'}`}>
+                <main className={screen === "processing" || screen === "success" ? "lg:col-span-2" : ""}>{renderStep()}</main>
                 {screen !== "processing" && screen !== "success" ? (
                   <OrderSummary
                     embedded={embedded}
@@ -370,14 +370,14 @@ export default function BuyGold({ embedded = false, onClose } = {}) {
       return (
         <Card embedded={embedded} className={`${embedded ? '' : 'lg:col-span-2'}`}>
           <StepTitle embedded={embedded} eyebrow="Step 5 of 5" title="Purchase complete" />
-          <div className="mt-8 grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
-            <div className={`rounded-2xl border border-yellow-500/20 bg-yellow-500/10 ${embedded ? 'p-5' : 'p-8'} text-center`}>
-              <div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-yellow-400 text-black">
-                <Check className="h-12 w-12" />
+          <div className={`${embedded ? 'mt-4 gap-3 lg:grid-cols-2' : 'mt-8 gap-6 lg:grid-cols-[0.85fr_1.15fr]'} grid items-stretch`}>
+            <div className={`flex h-full flex-col justify-center rounded-2xl border border-yellow-500/20 bg-yellow-500/10 ${embedded ? 'p-5' : 'p-8'} text-center`}>
+              <div className={`mx-auto grid ${embedded ? 'h-16 w-16' : 'h-20 w-20'} place-items-center rounded-full bg-yellow-400 text-black`}>
+                <Check className={embedded ? "h-9 w-9" : "h-12 w-12"} />
               </div>
-              <h2 className={`mt-6 ${embedded ? 'text-xl' : 'text-2xl'} font-bold`}>Payment Successful</h2>
+              <h2 className={`mt-4 ${embedded ? 'text-xl' : 'text-2xl'} font-bold`}>Payment Successful</h2>
               <p className={`mt-2 ${embedded ? 'text-sm' : 'text-sm'} text-white/55`}>{resultGrams.toFixed(4)} g of 24K gold added to your vault.</p>
-              <div className="mt-8 grid gap-3 sm:grid-cols-2">
+              <div className={`${embedded ? 'mt-5' : 'mt-8'} grid gap-3 sm:grid-cols-2`}>
                 <button onClick={() => window.location.href = "/dashboard"} className="rounded-xl border border-white/15 px-5 py-3 font-semibold">
                   Go Home
                 </button>
@@ -386,9 +386,9 @@ export default function BuyGold({ embedded = false, onClose } = {}) {
                 </button>
               </div>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+            <div className={`flex h-full flex-col rounded-2xl border border-white/10 bg-white/[0.03] ${embedded ? 'p-5' : 'p-6'}`}>
               <p className="text-xs uppercase tracking-[0.16em] text-yellow-300">Order details</p>
-              <div className="mt-4 divide-y divide-white/10">
+              <div className="mt-4 grow divide-y divide-white/10">
                 <SummaryRow label="Amount paid" value={formatCurrency(resultAmount)} />
                 <SummaryRow label="Gold purchased" value={`${resultGrams.toFixed(4)} g`} />
                 <SummaryRow label="Rate" value={`${formatCurrency(orderResult?.rate || displayRate)}/g`} />
@@ -396,7 +396,7 @@ export default function BuyGold({ embedded = false, onClose } = {}) {
                 <SummaryRow label="Status" value="Completed" />
               </div>
               {orderResult?.transactionId ? (
-                <button onClick={handleInvoice} disabled={invoiceLoading} className="mt-5 rounded-xl border border-yellow-500/30 px-5 py-3 text-sm font-semibold text-yellow-300">
+                <button onClick={handleInvoice} disabled={invoiceLoading} className="mt-5 w-full rounded-xl border border-yellow-500/30 px-5 py-3 text-sm font-semibold text-yellow-300">
                   {invoiceLoading ? "Generating invoice..." : "Download invoice"}
                 </button>
               ) : null}
@@ -409,16 +409,16 @@ export default function BuyGold({ embedded = false, onClose } = {}) {
     return (
       <Card embedded={embedded}>
         <StepTitle embedded={embedded} eyebrow="Step 1 of 5" title="Enter purchase amount" />
-        <div className={`${embedded ? 'mt-4 gap-4' : 'mt-6 gap-5'} grid md:grid-cols-[1fr_0.9fr]`}>
-          <div className={`rounded-2xl border border-yellow-500/20 bg-[linear-gradient(135deg,rgba(15,54,53,0.8),rgba(93,66,13,0.78))] ${embedded ? 'p-4' : 'p-5'}`}>
+        <div className={`${embedded ? 'mt-3 gap-3' : 'mt-6 gap-5'} grid md:grid-cols-2`}>
+          <div className={`rounded-xl border border-yellow-500/20 bg-[linear-gradient(135deg,rgba(15,54,53,0.8),rgba(93,66,13,0.78))] ${embedded ? 'p-3' : 'p-5'}`}>
             <p className={`${embedded ? 'text-xs' : 'text-sm'} text-white/60`}>24K - 999.9 Pure Gold</p>
-            <p className={`mt-2 ${embedded ? 'text-2xl xl:text-3xl' : 'text-3xl sm:text-4xl'} font-bold leading-tight text-yellow-300 truncate`}>{formatCurrency(displayRate)}/g</p>
-            <p className="mt-1 text-sm text-emerald-400">{isRateLoading ? "Refreshing live rate..." : "Live rate refreshed"}</p>
+            <p className={`mt-1 ${embedded ? 'text-2xl' : 'text-3xl sm:text-4xl'} font-bold leading-tight text-yellow-300 truncate`}>{formatCurrency(displayRate)}/g</p>
+            <p className={`${embedded ? 'mt-1 text-xs' : 'mt-1 text-sm'} text-emerald-400`}>{isRateLoading ? "Refreshing live rate..." : "Live rate refreshed"}</p>
           </div>
-          <div className={`rounded-2xl border border-white/10 bg-white/[0.03] ${embedded ? 'p-4' : 'p-5'}`}>
+          <div className={`rounded-xl border border-white/10 bg-white/[0.03] ${embedded ? 'p-3' : 'p-5'}`}>
             <p className="text-xs uppercase tracking-[0.14em] text-white/45">You pay</p>
-            <label className={`mt-4 flex ${embedded ? 'h-12 sm:h-14 text-2xl' : 'h-16 sm:h-20 text-3xl sm:text-4xl'} items-center rounded-xl border border-white/15 bg-black/25 px-4 font-bold text-yellow-300`}>
-              <span className="mr-3">₹</span>
+            <label className={`mt-2 flex ${embedded ? 'h-11 text-xl' : 'h-16 sm:h-20 text-3xl sm:text-4xl'} items-center rounded-xl border border-white/15 bg-black/25 px-4 font-bold text-yellow-300`}>
+              <span className="mr-2">₹</span>
               <input
                 type="text"
                 inputMode="decimal"
@@ -431,12 +431,12 @@ export default function BuyGold({ embedded = false, onClose } = {}) {
                 className="w-full bg-transparent outline-none"
               />
             </label>
-            <p className={`mt-3 ${embedded ? 'text-xs' : 'text-sm'} text-white/45`}>Estimated gold: {grams.toFixed(4)} g</p>
+            <p className={`mt-2 ${embedded ? 'text-xs' : 'text-sm'} text-white/45`}>Estimated gold: {grams.toFixed(4)} g</p>
           </div>
         </div>
-        <div className={`${embedded ? 'mt-4 gap-2 text-sm' : 'mt-5 gap-3'} flex flex-wrap`}>
+        <div className={`${embedded ? 'mt-3 gap-2 text-sm' : 'mt-5 gap-3'} flex flex-wrap`}>
           {[500, 1000, 5000, 10000].map((quickAmount) => (
-            <button key={quickAmount} onClick={() => setAmount(String(quickAmount))} className={`rounded-xl border border-white/15 ${embedded ? 'px-3 py-2' : 'px-4 py-2'} text-sm text-white/75 hover:border-yellow-400/40 hover:text-white`}>
+            <button key={quickAmount} onClick={() => setAmount(String(quickAmount))} className={`rounded-xl border border-white/15 ${embedded ? 'px-3 py-1.5' : 'px-4 py-2'} text-sm text-white/75 hover:border-yellow-400/40 hover:text-white`}>
               ₹{quickAmount.toLocaleString("en-IN")}
             </button>
           ))}
@@ -464,7 +464,7 @@ export default function BuyGold({ embedded = false, onClose } = {}) {
 
 function Stepper({ currentStep, embedded = false }) {
   return (
-    <div className={`w-full ${embedded ? 'max-w-md' : 'max-w-xl'}`}>
+    <div className={`w-full ${embedded ? 'max-w-sm' : 'max-w-xl'}`}>
       <div className={`grid grid-cols-5 ${embedded ? 'gap-2' : 'gap-3'}`}>
         {stepItems.map(([, label], index) => (
           <div key={label}>
@@ -505,9 +505,9 @@ function InfoTile({ label, value, embedded: itEmbedded = false }) {
 
 function OrderSummary({ amount, rate, grams, preTax, gstAmount, isRateLoading, rateError, embedded: osEmbedded = false }) {
   return (
-    <aside className={`rounded-2xl border border-yellow-500/20 bg-[#17140f] ${osEmbedded ? 'p-4 lg:self-start' : 'p-6'}`}>
+    <aside className={`rounded-2xl border border-yellow-500/20 bg-[#17140f] ${osEmbedded ? 'h-full p-3' : 'p-6'}`}>
       <div className="flex items-center gap-3">
-        <div className={`grid ${osEmbedded ? 'h-9 w-9' : 'h-11 w-11'} place-items-center rounded-full bg-yellow-400 text-black`}>
+        <div className={`grid ${osEmbedded ? 'h-8 w-8' : 'h-11 w-11'} place-items-center rounded-full bg-yellow-400 text-black`}>
           <Sparkles className={`${osEmbedded ? 'h-4 w-4' : 'h-5 w-5'}`} />
         </div>
         <div>
@@ -518,12 +518,12 @@ function OrderSummary({ amount, rate, grams, preTax, gstAmount, isRateLoading, r
       <div className={`${osEmbedded ? 'mt-3' : 'mt-4'} divide-y divide-white/10`}>
         <SummaryRow embedded={osEmbedded} label="Amount" value={formatCurrency(amount)} />
         <SummaryRow embedded={osEmbedded} label="Gold rate" value={`${formatCurrency(rate)}/g`} />
-        <SummaryRow embedded={osEmbedded} label="Gold quantity" value={`${grams.toFixed(4)} g`} />
-        <SummaryRow embedded={osEmbedded} label="Subtotal" value={formatCurrency(preTax)} />
-        <SummaryRow embedded={osEmbedded} label="GST (3%)" value={formatCurrency(gstAmount)} />
+        {!osEmbedded ? <SummaryRow embedded={osEmbedded} label="Gold quantity" value={`${grams.toFixed(4)} g`} /> : null}
+        {!osEmbedded ? <SummaryRow embedded={osEmbedded} label="Subtotal" value={formatCurrency(preTax)} /> : null}
+        {!osEmbedded ? <SummaryRow embedded={osEmbedded} label="GST (3%)" value={formatCurrency(gstAmount)} /> : null}
         <SummaryRow embedded={osEmbedded} label="Payable" value={formatCurrency(amount)} strong />
       </div>
-      <div className={`mt-3 flex items-start gap-3 rounded-xl bg-emerald-500/10 ${osEmbedded ? 'p-3 text-xs' : 'p-4 text-sm text-white/55'}`}>
+      <div className={`mt-2 flex items-start gap-2 rounded-xl bg-emerald-500/10 ${osEmbedded ? 'p-2.5 text-xs' : 'p-4 text-sm text-white/55'}`}>
         <ShieldCheck className={`mt-0.5 ${osEmbedded ? 'h-4 w-4' : 'h-5 w-5'} shrink-0 text-emerald-400`} />
         Gold is stored in an insured vault after payment success.
       </div>
@@ -535,7 +535,7 @@ function SummaryRow({ label, value, strong = false, embedded: srEmbedded = false
   return (
     <div className={`flex justify-between items-baseline gap-4 ${srEmbedded ? 'py-1.5' : 'py-2'} ${strong ? "text-lg font-bold text-yellow-300" : "text-sm text-white/45"}`}>
       <span className={strong ? "text-white" : "text-white/45"}>{label}</span>
-      <span className={`text-right font-semibold whitespace-nowrap ${strong ? (srEmbedded ? 'text-lg text-yellow-300' : 'text-2xl sm:text-3xl lg:text-4xl text-yellow-300') : (srEmbedded ? 'text-sm text-white' : 'text-sm sm:text-base text-white')}`}>{value}</span>
+      <span className={`text-right font-semibold whitespace-nowrap ${strong ? (srEmbedded ? 'text-lg text-yellow-300' : 'text-2xl sm:text-3xl lg:text-4xl text-yellow-300') : (srEmbedded ? 'text-xs text-white' : 'text-sm sm:text-base text-white')}`}>{value}</span>
     </div>
   );
 }
@@ -546,7 +546,7 @@ function PrimaryButton({ children, onClick, disabled = false, embedded: pbEmbedd
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`karatly-gold-button mt-6 inline-flex ${pbEmbedded ? 'h-10 px-4 text-sm' : 'h-12 px-6 text-sm'} w-full items-center justify-center gap-2 rounded-xl font-bold disabled:cursor-not-allowed disabled:opacity-60`}
+      className={`karatly-gold-button ${pbEmbedded ? 'mt-4 h-10 px-4 text-sm' : 'mt-6 h-12 px-6 text-sm'} inline-flex w-full items-center justify-center gap-2 rounded-xl font-bold disabled:cursor-not-allowed disabled:opacity-60`}
     >
       {children}
       <ArrowRight className="h-4 w-4" />
