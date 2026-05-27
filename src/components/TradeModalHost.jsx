@@ -66,10 +66,10 @@ export default function TradeModalHost() {
       aria-modal="true"
     >
       <div
-        className="max-h-[92vh] w-full max-w-3xl rounded-3xl border border-white/10 bg-[#0f0f0f] shadow-2xl overflow-hidden"
+        className="max-h-[92vh] w-full max-w-5xl rounded-3xl border border-white/10 bg-[#0f0f0f] shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-end p-3">
+        <div className="flex items-center justify-end px-3 py-2">
           <button
             type="button"
             onClick={close}
@@ -79,7 +79,7 @@ export default function TradeModalHost() {
           </button>
         </div>
 
-        <div className="overflow-auto max-h-[84vh] p-3">
+        <div className="overflow-auto max-h-[85vh] px-3 pb-3">
           <div className="mt-1">
             {mode === "buy" ? <BuyGold embedded onClose={close} /> : <SellGold embedded onClose={close} />}
           </div>

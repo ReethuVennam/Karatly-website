@@ -41,11 +41,16 @@ function Navbar() {
     ? [
         ["Home", "/"],
         ["Dashboard", "/dashboard"],
+        ["Why Karatly", "/why"],
+        ["How It Works", "/how-it-works"],
+        ["History", "/portfolio?tab=history"],
         ["Market", "/products"],
         ["Order", "/orders"]
       ]
     : [
         ["Home", "/"],
+        ["Why Karatly", "/why"],
+        ["How It Works", "/how-it-works"],
         ["Market", "/products"],
         ["Login", "/login"]
       ];
@@ -66,12 +71,12 @@ function Navbar() {
             </div>
           </Link>
 
-          <div className="hidden items-center gap-10 lg:flex">
+          <div className="hidden items-center gap-6 xl:gap-8 lg:flex">
             {navItems.map(([label, path]) => (
               <Link
                 key={path}
                 to={path}
-                className="border-b-2 border-transparent pb-1 text-sm text-white transition hover:border-yellow-400 hover:text-yellow-300"
+                className="whitespace-nowrap border-b-2 border-transparent pb-1 text-sm text-white transition hover:border-yellow-400 hover:text-yellow-300"
               >
                 {label}
               </Link>

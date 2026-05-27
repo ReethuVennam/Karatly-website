@@ -33,10 +33,13 @@ function Header() {
           <p className="text-[10px] uppercase tracking-[0.12em] text-white/55">Premium Gold</p>
         </div>
       </button>
-      <nav className="hidden items-center gap-10 md:flex">
+      <nav className="hidden items-center gap-6 lg:gap-8 md:flex">
         {[
           ["Home", "/"],
           ["Dashboard", "/dashboard"],
+          ["Why Karatly", "/why"],
+          ["How It Works", "/how-it-works"],
+          ["History", "/portfolio?tab=history"],
           ["Market", "/products"],
           ["Order", "/orders"],
         ].map(([label, path]) => (
@@ -44,7 +47,7 @@ function Header() {
             key={label}
             type="button"
             onClick={() => navigate(path)}
-            className={`border-b-2 pb-1 text-sm transition ${label === "Dashboard" ? "border-yellow-400 text-yellow-300" : "border-transparent text-white hover:text-yellow-300"}`}
+            className={`whitespace-nowrap border-b-2 pb-1 text-sm transition ${label === "Dashboard" ? "border-yellow-400 text-yellow-300" : "border-transparent text-white hover:text-yellow-300"}`}
           >
             {label}
           </button>
